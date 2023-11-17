@@ -25,7 +25,6 @@ if __name__ == "__main__":
     fixed_moment_method(nodes,beams,columns,EE)
 
 #D値法
-    #X方向
     D_method(nodes,layers,beams,columns,EE)
 
     for i in columns:
