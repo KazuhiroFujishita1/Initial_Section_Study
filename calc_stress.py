@@ -3,120 +3,249 @@ from member_class import *
 import math
 
 #分担モーメント、到達モーメントの計算
-def calc_moment(FEM_sum,member_no_each_node,myu,node,member):
+def calc_moment(FEM_sum,member_no_each_node,myu,nodes,beams,columns,beam_no):
     D1 = [];
     C1 = [];
-    C1_sum = np.zeros(int((len(node.no))))
+    C1_sum = np.zeros(len(nodes))
 
-    for i in range(len(member.no)):
-        temp_i = 0;temp_j = 0
-        for j in range(len(node.no)):#i端の算定
-            if member.i[i] == node.no[j]:
+    for i in beam_no:
+        temp_i = 0;temp_j=0
+        for j in range(len(nodes)):#i端の算定
+            if beams[i-1].i == nodes[j].no:
                 for k in range(len(member_no_each_node[j])):
-                    if member.no[i] == member_no_each_node[j][k]:
+                    if beams[i-1].no == member_no_each_node[j][k]:
                         temp_i=float(myu[j][k])
-            if member.j[i] == node.no[j]:#j端の算定
+            if beams[i-1].j == nodes[j].no:
                 for k in range(len(member_no_each_node[j])):
-                    if member.no[i] == member_no_each_node[j][k]:
-                        temp_j=float(myu[j][k])
-        D1.append([-FEM_sum[member.i[i]-1] * temp_i,-FEM_sum[member.j[i]-1]  * temp_j])
-        C1.append([-FEM_sum[member.j[i]-1] * temp_j/2, -FEM_sum[member.i[i]-1] * temp_i/2])
-        C1_sum[member.i[i]-1]+=-FEM_sum[member.j[i]-1] * temp_j/2
-        C1_sum[member.j[i]-1]+=-FEM_sum[member.i[i]-1] * temp_i/2
+                    if beams[i-1].no == member_no_each_node[j][k]:
+                        temp_j = float(myu[j][k])
+
+        D1.append([-FEM_sum[beams[i-1].i-1]*temp_i, -FEM_sum[beams[i-1].j-1]*temp_j])
+        C1.append([-FEM_sum[beams[i-1].j - 1] * temp_j/2, -FEM_sum[beams[i-1].i - 1] * temp_i/2])
+        C1_sum[beams[i-1].i-1]+=-FEM_sum[beams[i-1].j-1] * temp_j/2
+        C1_sum[beams[i-1].j-1]+=-FEM_sum[beams[i-1].i-1] * temp_i/2
+
+    for i in columns:
+        temp_i = 0;
+        temp_j = 0
+        for j in range(len(nodes)):  # i端の算定
+            if i.i == nodes[j].no:
+                for k in range(len(member_no_each_node[j])):
+                    if i.no + len(beam_no) == member_no_each_node[j][k]:
+                        temp_i = float(myu[j][k])
+
+            if i.j == nodes[j].no:
+                for k in range(len(member_no_each_node[j])):
+                    if i.no  +len(beam_no) == member_no_each_node[j][k]:
+                        temp_j = float(myu[j][k])
+
+        D1.append([-FEM_sum[i.i - 1] * temp_i, -FEM_sum[i.j - 1] * temp_j])
+        C1.append([-FEM_sum[i.j - 1] * temp_j / 2, -FEM_sum[i.i - 1] * temp_i / 2])
+        C1_sum[i.i - 1] += -FEM_sum[i.j - 1] * temp_j / 2
+        C1_sum[i.j - 1] += -FEM_sum[i.i - 1] * temp_i / 2
 
     return D1,C1,C1_sum
 
+#部材の接合状況を把握
+def detect_connection(nodes,beams,columns):
+
+    for i in nodes:
+        #X方向の梁
+        temp_x = [];member_stiff_temp_x=[];member_stiff_temp2_x=[];temp4_x=[]
+        count_x=0
+        for j in beams:
+            if j.direction == "X": #X方向の場合
+                count_x+=1
+                if i.no == j.i or i.no == j.j :
+                    if j.category == "BB":#基礎梁の場合
+                        member_stiff_temp2_x.append(1000000000)
+                        temp4_x.append(j.no)
+                    else:
+                        temp_x.append(j.no)
+                        temp4_x.append(j.no)
+                        member_stiff_temp2_x.append(j.stiff_ratio)  # 固定モーメント法の時は基礎梁剛性は無限大
+                        member_stiff_temp_x.append(j.stiff_ratio)
+        i.beam_no_each_node_x = temp_x
+        i.beam_no_each_node2_x = temp4_x#D値法計算用のリスト（基礎梁含む）
+
+        temp2_x = [];temp3_x = []
+        for j in columns:
+            if i.no == j.i or i.no == j.j :
+                temp3_x.append(j.no)
+                temp2_x.append(j.no + count_x)
+                member_stiff_temp_x.append(j.stiff_ratio_x)
+                member_stiff_temp2_x.append(j.stiff_ratio_x)
+
+        #Y方向の梁
+        temp_y = [];member_stiff_temp_y = [];member_stiff_temp2_y = [];temp4_y = []
+        count_y=0
+        for j in beams:
+            if j.direction == "Y":  # Y方向の場合
+                count_y+=1
+                if i.no == j.i or i.no == j.j:
+                    if j.category == "BB":#基礎梁の場合
+                        member_stiff_temp2_y.append(1000000000)
+                        temp4_y.append(j.no)
+                    else:
+                        temp_y.append(j.no)
+                        temp4_y.append(j.no)
+                        member_stiff_temp2_y.append(j.stiff_ratio)  # 固定モーメント法の時は基礎梁剛性は無限大
+                        member_stiff_temp_y.append(j.stiff_ratio)
+
+        i.beam_no_each_node_y = temp_y
+        i.beam_no_each_node2_y = temp4_y  # D値法計算用のリスト（基礎梁含む）
+
+        temp2_y = [];temp3_y = []
+        for j in columns:
+            if i.no == j.i or i.no == j.j :
+                temp3_y.append(j.no)
+                temp2_y.append(j.no + count_y)
+                member_stiff_temp_y.append(j.stiff_ratio_x)
+                member_stiff_temp2_y.append(j.stiff_ratio_x)
+
+        i.column_no_each_node_x = temp3_x
+        i.column_no_each_node_y = temp3_y
+        i.member_no_each_node_x = temp_x+temp2_x#全部材を通し番号で整理
+        i.member_no_each_node_y = temp_y+temp2_y#全部材を通し番号で整理
+        i.member_no_each_node2_x = temp4_x+temp2_x#全部材を通し番号で整理（基礎梁含む）
+        i.member_no_each_node2_y = temp4_y+temp2_y#全部材を通し番号で整理（基礎梁含む）
+        i.node_member_stiff_x = member_stiff_temp_x
+        i.node_member_stiff_y = member_stiff_temp_y
+        i.node_member_stiff2_x = member_stiff_temp2_x
+        i.node_member_stiff2_y = member_stiff_temp2_y
 
 #固定モーメント法による長期荷重の算定(鹿島様受領Excel（固定モーメント法）の通り）
 # #各節点に接続する梁の固定端モーメントの算定
 #それぞれの節点に接続する柱梁番号をリストとして整理、モーメント分担率の算定
-def fixed_moment_method(beam_no,beam,column,member,EE):
-    beam_no_each_node=[];column_no_each_node=[];member_no_each_node=[]
-    beam_no_each_node2=[];member_no_each_node2=[]
-    node_member_stiff=[];
-
-    node = Node()
-
-    for i in node.no:
-        temp = [];member_stiff_temp=[];temp4=[]
-        for j in range(len(beam.no)):
-            if i == beam.i[j] or i == beam.j[j] :
-                if beam.category[j] != "BB":
-                    temp.append(beam.no[j])
-                    member_stiff_temp.append(beam.stiff_ratio[j])
-                temp4.append(beam.no[j])
-        beam_no_each_node.append(temp)
-        beam_no_each_node2.append(temp4)#D値法計算用のリスト（基礎梁含む）
-        temp2 = [];temp3=[]
-        for j in range(len(column.no)):
-            if i == column.i[j] or i == column.j[j] :
-                temp3.append(column.no[j])
-                temp2.append(column.no[j]+len(beam_no))
-                member_stiff_temp.append(column.stiff_ratio[j])
-        column_no_each_node.append(temp3)
-        member_no_each_node.append(temp+temp2)#全部材を通し番号で整理
-        member_no_each_node2.append(temp4+temp2)#全部材を通し番号で整理（基礎梁含む）
-        node_member_stiff.append(member_stiff_temp)
+def fixed_moment_method(nodes,beams,columns,EE):
 
 #各節点ごとに部材ごとのモーメント分担率の算定
-    myu=[];FEM_sum=np.zeros(int((len(node.no))))
-    for i in range(len(node.no)):
+    myu_x=[];FEM_sum_x=np.zeros(int((len(nodes))))
+    myu_y=[];FEM_sum_y=np.zeros(int((len(nodes))))
+    for i in nodes:
         myu_temp=[]
 
     #モーメント分担率の算定
-        if len(node_member_stiff[i]) > 1:
-            for j in range(len(node_member_stiff[i])):
-                myu_temp.append(node_member_stiff[i][j]/sum(node_member_stiff[i]))
-        elif len(node_member_stiff[i]) == 1:
+        if len(i.node_member_stiff2_x) > 1:
+            for j in i.node_member_stiff2_x:
+                myu_temp.append(j/sum(i.node_member_stiff2_x))
+        elif len(i.node_member_stiff2_x) == 1:
             myu_temp.append(1)
-        myu.append(myu_temp)
+        myu_x.append(myu_temp)
+
+        myu_temp=[]
+        # モーメント分担率の算定
+        if len(i.node_member_stiff2_y) > 1:
+            for j in i.node_member_stiff2_y:
+                myu_temp.append(j / sum(i.node_member_stiff2_y))
+        elif len(i.node_member_stiff2_y) == 1:
+            myu_temp.append(1)
+        myu_y.append(myu_temp)
+
 
 #各節点の梁の固定端モーメントの算定（1回目）
-    FEM1 = []
-    for i in range(len(member.no)):
-        FEM_sum[member.i[i]-1]+=-member.Ci[i]
-        FEM_sum[member.j[i]-1]+=member.Cj[i]
-        FEM1.append([-member.Ci[i],member.Cj[i]])
+    FEM1_x = [];FEM1_y = [];beam_no_x=[];beam_no_y=[]
+    for i in beams:
+        if i.direction == "X":
+            beam_no_x.append(i.no)
+            FEM_sum_x[i.i-1]+=-i.Ci
+        else:
+            beam_no_y.append(i.no)
+            FEM_sum_y[i.i-1]+=-i.Ci
+        if i.direction == "X":
+            FEM_sum_x[i.j-1]+=i.Cj
+        else:
+            FEM_sum_y[i.j-1]+=i.Cj
+
+        if i.direction == "X":
+            FEM1_x.append([-i.Ci,i.Cj])
+        else:
+            FEM1_y.append([-i.Ci,i.Cj])
 
 #各部材ごとに梁の分担モーメント、到達モーメントの算定（1回目）
-    D1,C1,C1_sum = calc_moment(FEM_sum,member_no_each_node,myu,node,member)
+
+    member_no_each_node2_x=[];member_no_each_node2_y=[]
+    for i in nodes:
+        member_no_each_node2_x.append(i.member_no_each_node2_x)
+    for i in nodes:
+        member_no_each_node2_y.append(i.member_no_each_node2_y)
+
+    D1_x,C1_x,C1_sum_x = calc_moment(FEM_sum_x,member_no_each_node2_x,myu_x,nodes,beams,columns,beam_no_x)
+    D1_y,C1_y,C1_sum_y = calc_moment(FEM_sum_y,member_no_each_node2_y,myu_y,nodes,beams,columns,beam_no_y)
 
 #各部材ごとに梁の分担モーメントの算定（2回目）
-    D2,C2,C2_sum = calc_moment(C1_sum,member_no_each_node,myu,node,member)
+    D2_x,C2_x,C2_sum_x = calc_moment(C1_sum_x,member_no_each_node2_x,myu_x,nodes,beams,columns,beam_no_x)
+    D2_y,C2_y,C2_sum_y = calc_moment(C1_sum_y,member_no_each_node2_y,myu_y,nodes,beams,columns,beam_no_y)
 
+#各部材ごとにモーメントの和、部材長の算定(C2まで計算する）
+    temp = 0
+    for i in beam_no_x:
+        beams[i-1].M_Lx = np.array(FEM1_x[temp])+np.array(D1_x[temp])+np.array(C1_x[temp])+np.array(D2_x[temp])+np.array(C2_x[temp])#固定モーメント法の解
+        temp +=1
 
-#各部材ごとにモーメントの和、部材長の算定
-    moment_member=[]
-    for i in range(len(member.no)):
-        moment_member.append(np.array(FEM1[i])+np.array(D1[i])+np.array(C1[i])+np.array(D2[i]))#固定モーメント法の解
+    for i in columns:
+        i.M_Lx = np.array(D1_x[temp])+np.array(C1_x[temp])+np.array(D2_x[temp])+np.array(C2_x[temp])#固定モーメント法の解
+        temp +=1
+
+    temp = 0
+    for i in beam_no_y:
+        beams[i-1].M_Ly = np.array(FEM1_y[temp])+np.array(D1_y[temp])+np.array(C1_y[temp])+np.array(D2_y[temp])+np.array(C2_y[temp])#固定モーメント法の解
+        temp += 1
+
+    for i in columns:
+        i.M_Ly = np.array(D1_y[temp])+np.array(C1_y[temp])+np.array(D2_y[temp])+np.array(C2_y[temp])#固定モーメント法の解
+        temp += 1
 
 #各部材ごとに大梁のたわみ算定
-    center_moment=[];beam_disp = []
-    for i in range(len(beam.no)):
-        center_moment.append(-beam.dist_load[i]*member.length[i]**2/8
-                             -np.average([abs(moment_member[i][0]),abs(moment_member[i][1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
-        beam_disp.append(5*center_moment[i]/(48*EE*beam.I[i])*member.length[i]**2
-                     -sum(moment_member[i])/(16*EE*beam.I[i])*member.length[i]**2)#梁中央のたわみ（未検証）
+    center_moment_x=[]; center_moment_y=[];
+    temp=0
+    for i in beam_no_x:
+        center_moment_x.append(-beams[i-1].dist_load*beams[i-1].length**2/8
+                             -np.average([abs(beams[i-1].M_Lx[0]),abs(beams[i-1].M_Lx[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
+        beams[i-1].delta_x = (5*center_moment_x[temp]/(48*EE*beams[i-1].I)*beams[i-1].length**2
+                              -sum(beams[i-1].M_Lx)/(16*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証）
+        temp += 1
+    temp=0
+    for i in beam_no_y:
+        center_moment_y.append(-beams[i-1].dist_load*beams[i-1].length**2/8
+                             -np.average([abs(beams[i-1].M_Ly[0]),abs(beams[i-1].M_Ly[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
+        beams[i-1].delta_y = (5*center_moment_y[temp]/(48*EE*beams[i-1].I)*beams[i-1].length**2
+                            -sum(beams[i-1].M_Ly)/(16*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証）
+        temp += 1
 
-#柱のせん断力の算定
-    shear_force_column= []
-    for i in column.no:
-        temp = moment_member[i+len(beam.no)-1]
-        shear_force_column.append([abs(temp[0]+temp[1])/member.length[i+len(beam.no)-1],
-                                   abs(temp[0]+temp[1])/member.length[i+len(beam.no)-1]])
-#梁のせん断力の算定
-    shear_force_beam = [];Q0=[]
+    # 梁のせん断力の算定
+    Q0 = []
+    #X方向
+    temp = 0
+    for i in beam_no_x:
+        temp2 = beams[i-1].M_Lx
+        Q0.append(6 * beams[i-1].Ci / beams[i-1].length)  # 分布荷重を想定した単純梁を仮定
+        beams[i-1].Q_Lx = [Q0[temp] - (temp2[0] + temp2[1]) / beams[i-1].length,
+                                 Q0[temp] + (temp2[0] + temp2[1]) / beams[i-1].length]
+        temp += 1
+    #Y方向
+    Q0 = []
+    temp = 0
+    for i in beam_no_y:
+        temp2 = beams[i-1].M_Ly
+        Q0.append(6 * beams[i-1].Ci / beams[i-1].length)  # 分布荷重を想定した単純梁を仮定
+        beams[i-1].Q_Ly = [Q0[temp] - (temp2[0] + temp2[1]) / beams[i-1].length,
+                                 Q0[temp] + (temp2[0] + temp2[1]) / beams[i-1].length]
+        temp += 1
 
-    for i in range(len(beam.no)):
-        temp = moment_member[i]
-        Q0.append(6*member.Ci[i]/member.length[i])#分布荷重を想定した単純梁を仮定
-        shear_force_beam.append([Q0[i]-(temp[0]+temp[1])/member.length[i],
-                                 Q0[i]+(temp[0]+temp[1])/member.length[i]])
-
-    shear_member = shear_force_beam + shear_force_column
-
-    return moment_member, shear_member, member_no_each_node2
-
+    # 柱のせん断力の算定
+    temp = 0
+    for i in columns:
+        temp2 = i.M_Lx
+        i.Q_Lx = [(abs(temp2[0])+abs(temp2[1]))/i.length,
+                               (abs(temp2[0])+abs(temp2[1]))/i.length]
+        temp += 1
+    temp = 0
+    for i in columns:
+        temp2 = i.M_Ly
+        i.Q_Ly = [(abs(temp2[0])+abs(temp2[1]))/i.length,
+                               (abs(temp2[0])+abs(temp2[1]))/i.length]
+        temp += 1
 
 #各柱の反曲点高比の算定
 def calc_shear_slope(column_story,kk_temp,alpha1,alpha2,alpha3,maximum_story):
@@ -134,6 +263,10 @@ def calc_shear_slope(column_story,kk_temp,alpha1,alpha2,alpha3,maximum_story):
     elif kk_temp >= 5:
         kk_temp = 5
 
+    flag = 0
+    if alpha1 < 0:#α1が負の時
+        alpha1 = abs(alpha1)
+        flag = 1#旗を立てる
     if alpha1 < 0.4:#探索用のα1算定
         alpha1 = 0.4
     elif alpha1 <= 0.9 and alpha1 >= 0.4:
@@ -169,74 +302,80 @@ def calc_shear_slope(column_story,kk_temp,alpha1,alpha2,alpha3,maximum_story):
 
 #y1の算定
     target_row = y1_calc[y1_calc['alpha1'] == alpha1]
-    y1 = list(target_row[str(kk_temp)])[0]
+    if flag == 0:#α1が正のときそのまま
+        y1 = list(target_row[str(kk_temp)])[0]
+    elif flag == 1:#α1が負の時y1を負にする
+        y1 = -list(target_row[str(kk_temp)])[0]
 
 #y2の算定
     target_row = y2_calc[y2_calc['alpha2'] == alpha2]
-    y2 = list(target_row[str(kk_temp)])[0]
+    if column_story == maximum_story:#最上層の柱ではy2=0とする
+        y2 = 0
+    else:
+        y2 = list(target_row[str(kk_temp)])[0]
 
 #y3の算定
     target_row = y2_calc[y2_calc['alpha3'] == alpha3]
-    y3 = list(target_row[str(kk_temp)])[0]
+    if column_story == 1:#最下層（1Fとする）の柱ではy3=0とする
+        y3= 0
+    else:
+        y3 = list(target_row[str(kk_temp)])[0]
 
 #反曲点高比の算定
     yy = y0 + y1 + y2 + y3
 
     return yy
 
-
-#D値法による地震時荷重の算定
-def D_method(member_no_each_node_x,layer,beam,column,member):
-    kk=[];a=[];D=[];D_sum=np.zeros(int((len(layer.shear_force))))
+#D値の算定
+def calc_D(nodes,columns,beams,layers,direction,D_sum):
+    kk=[];a=[];D=[]
     alpha1 = [];alpha2=[]; alpha3=[]; yy=[]
 
-    node = Node()
-
-    for i in column.no:
-        temp = member_no_each_node_x[column.i[i-1]-1]#i端部材no
-        temp2 = member_no_each_node_x[column.j[i-1]-1]#j端部材no
-
-        boundary_i = node.call_boundary(member.i_all[i - len(beam.no_all) - 1] - 1)
-        boundary_j = node.call_boundary(member.j_all[i - len(beam.no_all) - 1] - 1)
+    for i in columns:
+        if direction == "X":
+            temp = nodes[i.i - 1].beam_no_each_node2_x  # i端部材no
+            temp2 = nodes[i.j - 1].beam_no_each_node2_x  # j端部材no
+        else:
+            temp = nodes[i.i - 1].beam_no_each_node2_y  # i端部材no
+            temp2 = nodes[i.j - 1].beam_no_each_node2_y  # j端部材no
 
         temp_stiff=[];temp_stiff_i=[];temp_stiff_j=[]
         flag = 0
-        if (boundary_i == "pin" or
-                boundary_j == "pin"):
+        if (nodes[i.i-1].boundary_cond == "pin" or
+                nodes[i.j-1].boundary_cond == "pin"):
             flag = 1  # 柱のi,j側節点にピン支点が含まれる場合
-        elif (boundary_i == "fix" or
-                boundary_j == "fix"):
+        elif (nodes[i.i-1].boundary_cond == "fix" or
+                nodes[i.j-1].boundary_cond == "fix"):
             flag = 2  # 柱のi,j側節点に固定支点が含まれる場合
 
-        for j in temp:
-            if j <= len(beam.no_all):
-                temp_stiff.append(member.stiff_ratio[j-1])
-                temp_stiff_i.append(member.stiff_ratio[j-1])
-        for j in temp2:
-            if j <= len(beam.no_all):
-                temp_stiff.append(member.stiff_ratio[j-1])
-                temp_stiff_j.append(member.stiff_ratio[j-1])
+        for j in temp:#i端側に接続する梁部材の剛性のみを抽出
+            temp_stiff.append(beams[j-1].stiff_ratio)
+            temp_stiff_i.append(beams[j-1].stiff_ratio)
+        for j in temp2:#j端側に接続する梁部材の剛性のみを抽出
+            temp_stiff.append(beams[j-1].stiff_ratio)
+            temp_stiff_j.append(beams[j-1].stiff_ratio)
 
         if flag == 1:
-            kk_temp = sum(temp_stiff) / (member.stiff_ratio[i + len(beam.no_all) - 1])
+            kk_temp = sum(temp_stiff) / (i.stiff_ratio_x)
             kk.append(kk_temp)
             a.append((0.5*kk_temp)/(1+2*kk_temp))
-            D.append(member.stiff_ratio[i + len(beam.no_all) - 1]*(0.5*kk_temp)/(1+2*kk_temp))#柱脚ピンの場合
+            D.append(i.stiff_ratio_x*(0.5*kk_temp)/(1+2*kk_temp))#柱脚ピンの場合
             alpha1.append(0) #最下層ではα1=0
         elif flag ==2:
-            kk_temp = sum(temp_stiff) / (member.stiff_ratio[i + len(beam.no_all) - 1])
+            kk_temp = sum(temp_stiff) / (i.stiff_ratio_x)
             kk.append(kk_temp)
             a.append((0.5+kk_temp)/(2+kk_temp))#柱脚固定の場合
-            D.append(member.stiff_ratio[i + len(beam.no_all) - 1] * (0.5+kk_temp)/(2+kk_temp))
+            D.append(i.stiff_ratio_x * (0.5+kk_temp)/(2+kk_temp))
             alpha1.append(0) #最下層ではα1=0
         else:
-            kk_temp = sum(temp_stiff)/(2*member.stiff_ratio[i+len(beam.no_all)-1])
+            kk_temp = sum(temp_stiff)/(2*i.stiff_ratio_x)
             kk.append(kk_temp)
             a.append(kk_temp/(2+kk_temp))#一般階の場合
-            D.append(member.stiff_ratio[i + len(beam.no_all) - 1] * kk_temp/(2+kk_temp))
+            D.append(i.stiff_ratio_x * kk_temp/(2+kk_temp))
+
 
         #alpha1の算定
-            if node.z[column.i[i-1]-1] > node.z[column.j[i-1]-1]:#i端側がj端側よりも高い場合
+            if nodes[i.i-1].z > nodes[i.j-1].z:#i端側がj端側よりも高い場合
                 if sum(temp_stiff_i) <= sum(temp_stiff_j):#上梁の剛比が大きい場合
                     alpha1.append(sum(temp_stiff_i)/sum(temp_stiff_j))
                 else:#下梁の剛比が大きい場合
@@ -246,116 +385,182 @@ def D_method(member_no_each_node_x,layer,beam,column,member):
                     alpha1.append(sum(temp_stiff_j)/sum(temp_stiff_i))
                 else:#下梁の剛比が大きい場合
                     alpha1.append(-sum(temp_stiff_i)/sum(temp_stiff_j))
+
         #alpha2の算定
-        if max(column.story)-column.story[i-1] == max(column.story)-1:
+        if i.story == layers[0].story:
             alpha2.append(0)#最上層の時はalpha2=0
         else:#
-            alpha2.append(layer.height[max(column.story)-column.story[i-1]]/layer.height[max(column.story)-column.story[i-1]+1])
+            alpha2.append(layers[i.story-layers[0].story].height/layers[i.story-layers[0].story+1].height)
         #alpha3の算定
-        if max(column.story)-column.story[i-1] == 0:
+        if i.story == layers[len(layers)-1].story:
             alpha3.append(0)#最下層の時はalpha3=0
         else:#
-            alpha3.append(layer.height[max(column.story)-column.story[i-1]]/layer.height[max(column.story)-column.story[i-1]-1])
+            alpha3.append(layers[i.story-layers[0].story+1].height/layers[i.story-layers[0].story].height)
 
         #各層のD値の和の算定
-        D_sum[column.story[i-1]-1] += D[i-1]
+        D_sum[i.story-1] += D[i.no-1]
 
     #各柱の反曲点高比の算定
-        maximum_story = len(layer.height)
-        yy_temp = calc_shear_slope(column.story[i-1],kk_temp,alpha1[i-1],alpha2[i-1],alpha3[i-1],maximum_story)
+        maximum_story = layers[0].story
+        yy_temp = calc_shear_slope(i.story,kk_temp,alpha1[i.no-1],alpha2[i.no-1],alpha3[i.no-1],maximum_story)
         yy.append(yy_temp)
 
-    #柱のせん断力、曲げモーメントを算定
-    shear_column =[];moment_column=[]
-    tt = 0
-    for i in column.no:
-        shear_column.append(D[i-1]/D_sum[column.story[i-1]-1]*layer.shear_force[max(column.story)-column.story[i-1]])
-        if node.z[column.i[i - 1] - 1] > node.z[column.j[i - 1] - 1]:  # i端側がj端側よりも高い場合
-            moment_column.append([shear_column[tt] * layer.height[max(column.story) - column.story[i - 1]] * (1-yy[i - 1]),
-                                  shear_column[tt]*layer.height[max(column.story)-column.story[i-1]]*yy[i-1]])
-        else:
-            moment_column.append([shear_column[tt] * layer.height[max(column.story) - column.story[i - 1]] * yy[i - 1],
-                                  shear_column[tt]*layer.height[max(column.story)-column.story[i-1]]*(1-yy[i-1])])
-        tt += 1
+    return D,D_sum,yy
 
-    #梁の曲げモーメントの算定
-    node_moment = [];stiff_c=[]
-    for i in node.no:#各節点においてとりつく上下柱の曲げモーメントを集計
-        temp =0
-        for j in range(len(column.no)):
-            if i == column.i[j-1]:
-                temp += moment_column[j-1][0]
-            if i == column.j[j - 1]:
-                temp += moment_column[j-1][1]
-        node_moment.append(temp)
+#D値法による地震時荷重の算定
+def D_method(nodes,layers,beams,columns,EE):
+    D_sum_x=np.zeros((len(layers)));D_sum_y=np.zeros((len(layers)))
+
+    #D値の算定
+    D_x,D_sum_x,yy_x = calc_D(nodes,columns,beams,layers,"X",D_sum_x)
+    D_y,D_sum_y,yy_y = calc_D(nodes,columns,beams,layers,"Y",D_sum_y)
+
+    #各層の地震荷重を内部算定している場合代入
+    for i in layers:
+        if i.Qi:
+            i.shear_force_x = i.Qi
+            i.shear_force_y = i.Qi
+        else:
+            i.shear_force_x = i.shear_force_x
+            i.shear_force_y = i.shear_force_y
+            print(i.shear_force_x)
+
+    #柱のせん断力、曲げモーメントを算定
+    for i in columns:
+        #せん断力の算定
+        i.D_x = D_x[i.no-1]
+        i.D_y = D_y[i.no-1]#D値の柱クラスへの代入
+
+        i.Q_Sx = D_x[i.no-1]/D_sum_x[i.story-1]*layers[layers[0].story-i.story].shear_force_x
+        i.Q_Sy = D_y[i.no-1]/D_sum_y[i.story-1]*layers[layers[0].story-i.story].shear_force_y
+        #曲げモーメントの算定
+        if nodes[i.i-1].z > nodes[i.j-1].z:  # i端側がj端側よりも高い場合
+            i.M_Sx = [i.Q_Sx * layers[layers[0].story-i.story].height * (1-yy_x[i.no - 1]),
+                                  i.Q_Sx*layers[layers[0].story-i.story].height*yy_x[i.no-1]]
+            i.M_Sy = [i.Q_Sy * layers[layers[0].story - i.story].height * (1 - yy_y[i.no - 1]),
+                      i.Q_Sy * layers[layers[0].story - i.story].height * yy_y[i.no - 1]]
+        else:
+            i.M_Sx = [i.Q_Sx * layers[layers[0].story - i.story].height * yy_x[i.no - 1],
+                      i.Q_Sx * layers[layers[0].story - i.story].height * (1 - yy_x[i.no - 1])]
+            i.M_Sy = [i.Q_Sy * layers[layers[0].story - i.story].height * yy_y[i.no - 1],
+                      i.Q_Sy * layers[layers[0].story - i.story].height * (1 - yy_y[i.no - 1])]
+
+    #梁のせん断力、曲げモーメントの算定
+    node_moment_x = [];node_moment_y = [];stiff_c_x=[];stiff_c_y=[]
+    for i in nodes:#各節点においてとりつく上下柱の曲げモーメントを集計
+        temp =0;temp2=0
+        for j in columns:
+            if i.no == j.i:
+                temp += j.M_Sx[0]
+                temp2 += j.M_Sy[0]
+            if i.no == j.j:
+                temp += j.M_Sx[1]
+                temp2 += j.M_Sy[1]
+        node_moment_x.append(temp)
+        node_moment_y.append(temp2)
 
         # 各節点にとりつく梁の剛性和の算定
-        temp=0
-        for j in range(len(beam.no)):
-            if beam.i[j-1] == i or beam.j[j-1] == i:
-                temp += beam.stiff_ratio[j-1]
-        stiff_c.append(temp)
+        temp=0;temp2=0
+        for j in beams:
+            if j.direction == "X":
+                if j.i == i.no or j.j == i.no:
+                    temp += j.stiff_ratio
+            else:
+                if j.i == i.no or j.j == i.no:
+                    temp2 += j.stiff_ratio
+        stiff_c_x.append(temp)
+        stiff_c_y.append(temp2)
 
     #各梁の剛比に応じ柱の曲げモーメントを分配
-    moment_beam=[];shear_beam=[]
-    for i in range(len(beam.no)):
-        temp_i = 0;temp_j = 0
-        for j in range(len(node.no)):#i端の算定
-            if beam.i[i] == node.no[j]:
-                for k in range(len(member_no_each_node_x[j])):
-                    if beam.no[i] == member_no_each_node_x[j][k]:
-                        temp_i=float(beam.stiff_ratio[i]/stiff_c[j]*node_moment[j])
-            if beam.j[i] == node.no[j]:#j端の算定
-                for k in range(len(member_no_each_node_x[j])):
-                    if beam.no[i] == member_no_each_node_x[j][k]:
-                        temp_j=float(beam.stiff_ratio[i]/stiff_c[j]*node_moment[j])
-        moment_beam.append([temp_i,temp_j])
+    for i in beams:
+        temp_i_x = 0;temp_j_x = 0
+        temp_i_y = 0;temp_j_y = 0
+        for j in nodes:#i端の算定
+            if i.i == j.no:
+                for k in j.member_no_each_node_x:
+                    if i.no == k:
+                        temp_i_x=float(i.stiff_ratio/stiff_c_x[j.no-1]*node_moment_x[j.no-1])
+                for k in j.member_no_each_node_y:
+                    if i.no == k:
+                        temp_i_y=float(i.stiff_ratio/stiff_c_y[j.no-1]*node_moment_y[j.no-1])
+            if i.j == j.no:#j端の算定
+                for k in j.member_no_each_node_x:
+                    if i.no == k:
+                        temp_j_x=float(i.stiff_ratio/stiff_c_x[j.no-1]*node_moment_x[j.no-1])
+                for k in j.member_no_each_node_y:
+                    if i.no == k:
+                        temp_j_y=float(i.stiff_ratio/stiff_c_y[j.no-1]*node_moment_y[j.no-1])
+        i.M_Sx = [temp_i_x,temp_j_x]
+        i.M_Sy = [temp_i_y, temp_j_y]
 
-        shear_beam.append((moment_beam[i][0]+moment_beam[i][1])/beam.length[i])
-
-    moment_member = moment_beam + moment_column
-    shear_member = shear_beam + shear_column
+        i.Q_Sx = (i.M_Sx[0]+i.M_Sx[1])/i.length
+        i.Q_Sy = (i.M_Sy[0]+i.M_Sy[1])/i.length
 
     #各柱の軸力算定（inputファイルにおいて柱リストは上の層のものから順に記載すること）
-    temp_axial_column = [];axial_column=[]
-    for i in column.no:
-        column_x1,column_y1,column_z1 = node.call_node(column.i[i-1]-1)
-        column_x2,column_y2,column_z2 = node.call_node(column.j[i-1]-1)
+    temp_axial_column_x = []
+    temp_axial_column_y = []
+    for i in columns:
         #各柱にとりつく梁のせん断力から想定される軸力を算定
-        if column_z1 > column_z2:  # i端側がj端側よりも高い場合
-            temp = member_no_each_node_x[column.i[i-1]-1]#i端部材no
+        if nodes[i.i-1].z > nodes[i.j-1].z:  # i端側がj端側よりも高い場合
+            temp = nodes[i.i-1].beam_no_each_node_x#i端部材no
+            temp2 = nodes[i.i-1].beam_no_each_node_y
         else:
-            temp = member_no_each_node_x[column.j[i-1]-1]#j端部材no
+            temp = nodes[i.j-1].beam_no_each_node_x
+            temp2 = nodes[i.j-1].beam_no_each_node_y#j端部材no
 
-        temp2 = []#接続梁の部材番号のみを抽出
-        for j in temp:
-            if j <= len(beam.no_all):
-                temp2.append(j)
         #梁のせん断力の差分が軸力となる
-        if len(temp2) == 1:
-            temp_axial_column.append(shear_member[beam.no.index(temp2[0])])
-        elif len(temp2) == 2:
-            temp_axial_column.append(abs(shear_member[beam.no.index(temp2[0])]-shear_member[beam.no.index(temp2[1])]))
+        if len(temp) == 1:
+            temp_axial_column_x.append(beams[temp[0]-1].Q_Sx)
+        elif len(temp) == 2:
+            temp_axial_column_x.append(abs(beams[temp[0]-1].Q_Sx-beams[temp[1]-1].Q_Sx))
 
-    for i in column.no:
-        column_x1,column_y1,column_z1 = node.call_node(column.i[i-1]-1)
-        column_x2,column_y2,column_z2 = node.call_node(column.j[i-1]-1)
+        if len(temp2) == 1:
+            temp_axial_column_y.append(beams[temp2[0]-1].Q_Sy)
+        elif len(temp2) == 2:
+            temp_axial_column_y.append(abs(beams[temp2[0]-1].Q_Sy-beams[temp2[1]-1].Q_Sy))
+    
+    for i in columns:
         #上に接続する柱の軸力を足す
-        if column_z1 > column_z2:  # i端側がj端側よりも高い場合
-            temp = member_no_each_node_x[column.i[i-1]-1]#i端部材no
+        if nodes[i.i-1].z > nodes[i.j-1].z:  # i端側がj端側よりも高い場合
+            temp = nodes[i.i-1].column_no_each_node_x#i端部材no
+            temp2 = nodes[i.i-1].column_no_each_node_y
         else:
-            temp = member_no_each_node_x[column.j[i-1]-1]#j端部材no
-        temp2 = []#接続柱の部材番号のみを抽出
+            temp = nodes[i.j-1].column_no_each_node_x
+            temp2 = nodes[i.j-1].column_no_each_node_y#j端部材no
 
         frag =0
         for j in temp:
-            if j > len(beam.no_all) and int(j) != int(i+len(beam.no_all)):#自分以外の柱がある場合その柱の軸力を足す
-                axial_column.append(temp_axial_column[i-1]+temp_axial_column[j-len(beam.no_all)-1])
-                temp_axial_column[i-1]=temp_axial_column[i-1]+temp_axial_column[j-len(beam.no_all)-1]#temp自身も更新
+            if j != i.no:#自分以外の柱がある場合その柱の軸力を足す
+                i.N_Sx = temp_axial_column_x[i.no-1]+temp_axial_column_x[j-1]
+                temp_axial_column_x[i.no-1]+=temp_axial_column_x[j-1]#temp自身も更新
                 frag = 1
         if frag == 0:
-            axial_column.append(temp_axial_column[i-1])
+            i.N_Sx = temp_axial_column_x[i.no-1]
 
-    axial_member = [0]*len(beam.no) + axial_column #柱の軸力は0
+        frag = 0
+        for j in temp2:
+            if j != i.no:  # 自分以外の柱がある場合その柱の軸力を足す
+                i.N_Sy = temp_axial_column_y[i.no - 1] + temp_axial_column_y[j- 1]
+                temp_axial_column_y[i.no - 1] += temp_axial_column_y[j - 1]  # temp自身も更新
+                frag = 1
+        if frag == 0:
+            i.N_Sy = temp_axial_column_y[i.no - 1]
 
-    return moment_member,shear_member,axial_member
+        #各層の水平変形の算定
+    D_sum_x =np.zeros(len(layers))
+    D_sum_y = np.zeros(len(layers))
+    for i in layers:
+        for j in columns:
+            if i.story == j.story:
+                D_sum_x[len(layers) -i.story] += j.D_x        #各層柱のD値の集計
+                D_sum_y[len(layers)- i.story] += j.D_y
+
+    temp = 0
+    for i in layers:#各層の水平変形、水平変形角の算定
+        i.horizontal_disp_x = i.shear_force_x*1000/D_sum_x[temp]*(i.height*1000)**2/12/(EE/1000)/(10**5)
+        i.horizontal_disp_y = i.shear_force_y*1000/D_sum_y[temp]*(i.height*1000)**2/12/(EE/1000)/10**5
+        i.horizontal_angle_x = 1/(i.horizontal_disp_x/i.height/1000)
+        i.horizontal_angle_y = 1/(i.horizontal_disp_y/i.height/1000)
+        temp +=1
+
+

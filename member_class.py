@@ -2,317 +2,176 @@ import pandas as pd
 import numpy as np
 
 #部材長の算定
-def calc_length(member_i,member_j):
-    node = Node()
-    length = np.sqrt((node.x[member_i-1] - node.x[member_j-1]) ** 2  # 各部材の部材長算定
-            + (node.y[member_i-1] - node.y[member_j-1]) ** 2 + (node.z[member_i-1] - node.z[member_j-1])**2)
+def calc_length(member_i,member_j,nodes):
+    length = np.sqrt((nodes[member_i-1].x - nodes[member_j-1].x) ** 2  # 各部材の部材長算定
+            + (nodes[member_i-1].y - nodes[member_j-1].y) ** 2 + (nodes[member_i-1].z - nodes[member_j-1].z)**2)
     return length
+
+#データの読み込み
+def read_model():
+    # 節点の情報を収集
+    df1 = pd.read_excel("input_model.xlsx", sheet_name="Node", header=0)
+    node_data = []
+    for i in range(len(df1)):
+        node_data.append((df1['No'][i],df1['x'][i],df1['y'][i],df1['z'][i],df1['boundary'][i]))
+
+    nodes = [Node(*data) for data in node_data] #節点インスタンスの作成
+
+    #　梁の情報を収集
+    df2 = pd.read_excel("input_model.xlsx", sheet_name="Beam", header=0)
+    beam_data = []
+    for i in range(len(df2)):
+        #梁長さの算定
+        beam_length=calc_length(df2['i_point'][i],df2['j_point'][i],nodes)
+        #材端モーメントの算定
+        beam_load_i=-df2['w'][i] * beam_length ** 2 / 12
+        beam_load_j=-df2['w'][i] * beam_length ** 2 / 12
+        #梁の方向判定
+        if nodes[df2['i_point'][i] - 1].x == nodes[df2['j_point'][i] - 1].x:
+            beam_direction="X"
+        else:
+            beam_direction="Y"
+        beam_data.append((df2['No.'][i],df2['i_point'][i],df2['j_point'][i],beam_length,df2['I'][i],
+                          df2['stiffness_ratio'][i],df2['w'][i],beam_load_i,beam_load_j,df2['category'][i],beam_direction))
+
+    beams = [Beam(*data) for data in beam_data] #梁インスタンスの作成
+
+    #柱の情報を収集
+    df3 = pd.read_excel("input_model.xlsx", sheet_name="Column", header=0)
+    column_data = [];
+    for i in range(len(df3)):
+        #柱長さの算定
+        column_length=calc_length(df3['i_point'][i],df3['j_point'][i],nodes)
+
+        column_data.append((df3['No.'][i],df3['i_point'][i],df3['j_point'][i],df3['story'][i],
+                            column_length,df3['Ix'][i],df3['Iy'][i],df3['stiffness_ratio_x'][i],df3['stiffness_ratio_y'][i]))
+
+    columns = [Column(*data) for data in column_data]#柱インスタンスの作成
+
+    #層の情報を収集
+    df4 = pd.read_excel("input_model.xlsx", sheet_name="Story_shear", header=0)
+    layer_data = []; maximum_height =0
+    for i in range(len(df4)):
+        layer_data.append((df4['Story'][i],df4['Story_height'][i],df4['Shear_force_X'][i],df4['Shear_force_Y'][i],df4['omega_1'][i],df4['omega_2'][i],df4['floor_area'][i]))
+        maximum_height += df4['Story_height'][i]
+    layers = [Layer(*data) for data in layer_data]#層インスタンスの作成
+
+    return nodes, beams, columns,layers,maximum_height
 
 # 節点のクラス
 class Node():
-    def __init__(self):
-        df1 = pd.read_excel("input_model.xlsx", sheet_name="Node", header=0)
-        # 節点の情報を収集
-        node_no = list(df1['No'])
-        node_x = list(df1['x'])
-        node_y = list(df1['y'])
-        node_z = list(df1['z'])
-        boundary = list(df1['boundary'])
-
+    def __init__(self, node_no, node_x, node_y, node_z, boundary):
         self.no = node_no
         self.x = node_x
         self.y = node_y
         self.z = node_z
         self.boundary_cond = boundary
 
-    def call_node(self, no):
-        return self.x[no], self.y[no], self.z[no]
-
-    def call_boundary(self, no):
-        return self.boundary_cond[no]
+        self.beam_no_each_node_x = []
+        self.column_no_each_node_x = []
+        self.column_no_each_node_y = []
+        self.member_no_each_node_x = []
+        self.beam_no_each_node2_x = []
+        self.member_no_each_node2_x = []
+        self.beam_no_each_node_y = []
+        self.beam_no_each_node2_y = []
+        self.member_no_each_node_y = []
+        self.member_no_each_node2_y = []
+        self.node_member_stiff_x = []
+        self.node_member_stiff_y = []
+        self.node_member_stiff2_x = []
+        self.node_member_stiff2_y = []
 
     # 梁のクラス
 class Beam():
-    def __init__(self):
-        df2 = pd.read_excel("input_model.xlsx", sheet_name="Beam", header=0)
-
-        # 梁の情報を収集
-        member_no = [];  # 部材の通し番号もつくる
-        beam_no = list(df2['No.'])
-        beam_i = list(df2['i_point'])
-        beam_j = list(df2['j_point'])
-        beam_section_I = list(df2['I'])
-        beam_stiff = list(df2['stiffness_ratio'])
-        beam_distributed_load = list(df2['w'])
-        beam_category = list(df2['category'])
-        beam_length = []
-        for i in range(len(beam_no)):  # 梁部材長の算定
-            beam_length.append(calc_length(beam_i[i], beam_j[i]))
-
-        # 分布荷重→C
-        beam_load_i = [];
-        beam_load_j = []
-        for i in range(len(beam_no)):
-            beam_load_i.append(-beam_distributed_load[i] * beam_length[i] ** 2 / 12)
-            beam_load_j.append(-beam_distributed_load[i] * beam_length[i] ** 2 / 12)
-
-            # 梁の方向を分類（まずは直交座標を仮定）
-        beam_no_x = [];
-        beam_no_y = [];
-        beam_i_x = [];
-        beam_i_y = []
-        beam_j_x = [];
-        beam_j_y = [];
-        beam_stiff_x = [];
-        beam_stiff_y = [];
-        beam_load_i_x = [];
-        beam_load_j_x = [];
-        beam_load_i_y = [];
-        beam_load_j_y = []
-        C_moment_x = [];
-        C_moment_y = [];
-        beam_category_x = [];
-        beam_category_y = []
-        beam_distributed_load_x = [];
-        beam_distributed_load_y = []
-        beam_section_I_x = [];
-        beam_section_I_y = []
-        beam_length_x = [];
-        beam_length_y = [];
-
-            # 節点情報に関してDataFrameから辞書を生成
-        df1 = pd.read_excel("input_model.xlsx", sheet_name="Node", header=0)
-        data_dict1 = df1.to_dict(orient='records')
-
-        for i in range(len(beam_no)):
-            coordinate_i = next(item for item in data_dict1 if item['No'] == int(beam_i[i]))
-            coordinate_j = next(item for item in data_dict1 if item['No'] == int(beam_j[i]))
-
-            x_value_i = coordinate_i['x']
-            x_value_j = coordinate_j['x']
-            y_value_i = coordinate_j['y']
-            y_value_j = coordinate_j['y']
-
-            if x_value_i == x_value_j:
-                beam_no_y.append(beam_no[i])
-                beam_i_y.append(beam_i[i])
-                beam_j_y.append(beam_j[i])
-                beam_stiff_y.append(beam_stiff[i])
-                beam_load_i_y.append(beam_load_i[i])
-                beam_load_j_y.append(beam_load_j[i])
-                beam_distributed_load_y.append(beam_distributed_load[i])
-                C_moment_y.append([-beam_load_i[i], beam_load_j[i]])
-                beam_category_y.append(beam_category[i])
-                beam_section_I_y.append(beam_section_I[i])
-                beam_length_y.append(beam_length[i])
-
-            elif y_value_i == y_value_j:
-                beam_no_x.append(beam_no[i])
-                beam_i_x.append(beam_i[i])
-                beam_j_x.append(beam_j[i])
-                beam_stiff_x.append(beam_stiff[i])
-                beam_load_i_x.append(beam_load_i[i])
-                beam_load_j_x.append(beam_load_j[i])
-                beam_distributed_load_x.append(beam_distributed_load[i])
-                C_moment_x.append([-beam_load_i[i], beam_load_j[i]])
-                beam_category_x.append(beam_category[i])
-                beam_section_I_x.append(beam_section_I[i])
-                beam_length_x.append(beam_length[i])
-
-        self.no_all = beam_no
+    def __init__(self,beam_no,beam_i,beam_j,beam_length,beam_section_I,beam_stiff,
+                 beam_distributed_load,beam_load_i,beam_load_j,beam_category,beam_direction):
+        self.no = beam_no
         self.i = beam_i
         self.j = beam_j
         self.length = beam_length
         self.I = beam_section_I
-        self.stiff_ratio = beam_stiff
+        self.stiff_ratio = beam_stiff#剛比
         self.dist_load = beam_distributed_load
-        self.Ci = beam_load_i
-        self.Cj = beam_load_j
-        self.category = beam_category
+        self.Ci = beam_load_i#i端の固定端モーメント
+        self.Cj = beam_load_j#j端の固定端モーメント
+        self.category = beam_category#基礎梁か否か
+        self.direction = beam_direction#梁方向
 
-        self.beam_no_x =beam_no_x
-        self.beam_i_x = beam_i_x
-        self.beam_j_x = beam_j_x
-        self.beam_length_x =beam_length_x
-        self.beam_section_I_x =beam_section_I_x
-        self.beam_stiff_x =beam_stiff_x
-        self.beam_distributed_load_x = beam_distributed_load_x
-        self.beam_load_i_x = beam_load_i_x
-        self.beam_load_j_x = beam_load_j_x
-        self.beam_category_x = beam_category_x
+        self.unit_weight = 0#部材自重
+        self.weight = 0
 
-        self.beam_no_y = beam_no_y
-        self.beam_i_y = beam_i_y
-        self.beam_j_y = beam_j_y
-        self.beam_length_y = beam_length_y
-        self.beam_section_I_y = beam_section_I_y
-        self.beam_stiff_y = beam_stiff_y
-        self.beam_distributed_load_y = beam_distributed_load_y
-        self.beam_load_i_y = beam_load_i_y
-        self.beam_load_j_y = beam_load_j_y
-        self.beam_category_y = beam_category_y
+        self.M_Lx =[]#算定応力
+        self.M_Ly =[]
+        self.M_Sx =[]
+        self.M_Sy =[]
 
-    def call_x_dir(self):  # X方向の梁の呼び出し
-        self.no = self.beam_no_x
-        self.i = self.beam_i_x
-        self.j = self.beam_j_x
-        self.length = self.beam_length_x
-        self.I = self.beam_section_I_x
-        self.stiff_ratio = self.beam_stiff_x
-        self.dist_load = self.beam_distributed_load_x
-        self.Ci = self.beam_load_i_x
-        self.Cj = self.beam_load_j_x
-        self.category = self.beam_category_x
+        self.Q_Lx = []
+        self.Q_Ly = []
+        self.Q_Sx = []
+        self.Q_Sy = []
 
-    def call_y_dir(self):  # Y方向の梁の呼び出し
-        self.no = self.beam_no_y
-        self.i = self.beam_i_y
-        self.j = self.beam_j_y
-        self.length = self.beam_length_y
-        self.I = self.beam_section_I_y
-        self.stiff_ratio = self.beam_stiff_y
-        self.dist_load = self.beam_distributed_load_y
-        self.Ci = self.beam_load_i_y
-        self.Cj = self.beam_load_j_y
-        self.category = self.beam_category_y
+        self.N_Lx = []
+        self.N_Ly = []
+        self.N_Sx = []
+        self.N_Sy = []
+
+        self.delta_x = []
+        self.delta_y = []
 
     # 柱のクラス
 class Column():
-    def __init__(self):
-        df3 = pd.read_excel("input_model.xlsx", sheet_name="Column", header=0)
-
-        # 柱の情報を収集
-        column_no = list(df3['No.'])
-        column_i = list(df3['i_point'])
-        column_j = list(df3['j_point'])
-        column_story = list(df3['story'])
-        column_length = []
-        for i in range(len(column_no)):  # 柱部材長の算定
-            column_length.append(calc_length(column_i[i], column_j[i]))
-
+    def __init__(self,column_no,column_i,column_j,column_story,column_length,Ix,Iy,stiff_ratio_x,stiff_ratio_y):
         self.no = column_no
         self.i = column_i
         self.j = column_j
         self.story = column_story
         self.length = column_length
-        self.column_section_Ix = list(df3['Ix'])
-        self.column_stiff_x = list(df3['stiffness_ratio_x'])
-        self.column_section_Iy = list(df3['Iy'])
-        self.column_stiff_y = list(df3['stiffness_ratio_y'])
+        self.Ix = Ix
+        self.Iy = Iy
+        self.stiff_ratio_x = stiff_ratio_x#剛比
+        self.stiff_ratio_y = stiff_ratio_y
 
-    def call_x_info(self):  # X方向諸元の呼び出し
-        self.I = self.column_section_Ix
-        self.stiff_ratio = self.column_stiff_x
+        self.unit_weight = 0#部材自重
+        self.weight = 0
 
-    def call_y_info(self):  # Y方向諸元の呼び出し
-        self.I = self.column_section_Iy
-        self.stiff_ratio = self.column_stiff_y
+        self.D_x = []#算定D値
+        self.D_y = []
 
-    # 部材のクラス
-class Member():
-    def __init__(self):
-        df2 = pd.read_excel("input_model.xlsx", sheet_name="Beam", header=0)
-        df3 = pd.read_excel("input_model.xlsx", sheet_name="Column", header=0)
-        beam_no = list(df2['No.'])
-        beam_i = list(df2['i_point'])
-        beam_j = list(df2['j_point'])
-        beam= Beam()
-        column = Column()
-        column.call_x_info()#とりあえず部材のクラスを埋めるときは、x方向を参照
-        # 全部材の情報を定義
-        member_no = list(df2['No.']) + list(df3['No.'] + len(beam.no_all))
-        member_i = list(df2['i_point']) + list(df3['i_point'])
-        member_j = list(df2['j_point']) + list(df3['j_point'])
-        member_load_i = list(beam.Ci) + list([0] * len(column.no))
-        member_load_j = list(beam.Cj) + list([0] * len(column.no))
-        member_length = list(beam.length) + list(column.length)
+        self.M_Lx =[]#算定応力
+        self.M_Ly =[]
+        self.M_Sx =[]
+        self.M_Sy =[]
 
-        member_stiff = beam.stiff_ratio + column.stiff_ratio
+        self.Q_Lx = []
+        self.Q_Ly = []
+        self.Q_Sx = []
+        self.Q_Sy = []
 
-        # 節点情報に関してDataFrameから辞書を生成
-        df1 = pd.read_excel("input_model.xlsx", sheet_name="Node", header=0)
-        data_dict1 = df1.to_dict(orient='records')
-
-        for i in range(len(beam_no)):
-            coordinate_i = next(item for item in data_dict1 if item['No'] == int(beam_i[i]))
-            coordinate_j = next(item for item in data_dict1 if item['No'] == int(beam_j[i]))
-
-            x_value_i = coordinate_i['x']
-            x_value_j = coordinate_j['x']
-            y_value_i = coordinate_j['y']
-            y_value_j = coordinate_j['y']
-
-            if x_value_i == x_value_j:
-                beam.call_y_dir()
-                member_no_y = beam.no + list(df3['No.'] + len(beam_no))
-                member_i_y = beam.i + column.i
-                member_j_y = beam.j + column.j
-                member_load_i_y = beam.Ci + list([0] * len(column.no))
-                member_load_j_y = beam.Cj + list([0] * len(column.no))
-
-            elif y_value_i == y_value_j:
-                beam.call_x_dir()
-                member_no_x = beam.no + list(df3['No.'] + len(beam_no))
-                member_i_x = beam.i + column.i
-                member_j_x = beam.j + column.j
-                member_load_i_x = beam.Ci + list([0] * len(column.no))
-                member_load_j_x = beam.Cj + list([0] * len(column.no))
-
-        beam.call_x_dir()
-        member_length_x = list(beam.length) + list(column.length)
-        beam.call_y_dir()
-        member_length_y = list(beam.length) + list(column.length)
-
-        self.no = member_no
-        self.i = member_i
-        self.j = member_j
-        self.i_all = member_i
-        self.j_all = member_j
-        self.length = member_length
-        self.stiff_ratio = member_stiff
-        self.Ci = member_load_i
-        self.Cj = member_load_j
-
-        self.member_no_x = member_no_x
-        self.member_i_x = member_i_x
-        self.member_j_x = member_j_x
-        self.member_length_x = member_length_x
-        self.member_load_i_x = member_load_i_x
-        self.member_load_j_x = member_load_j_x
-
-        self.member_no_y = member_no_y
-        self.member_i_y = member_i_y
-        self.member_j_y = member_j_y
-        self.member_length_y = member_length_y
-        self.member_load_i_y = member_load_i_y
-        self.member_load_j_y = member_load_j_y
-
-    def call_x_dir(self):  # X方向の梁の呼び出し
-        self.no = self.member_no_x
-        self.i = self.member_i_x
-        self.j = self.member_j_x
-        self.length = self.member_length_x
-        self.Ci = self.member_load_i_x
-        self.Cj = self.member_load_j_x
-
-    def call_y_dir(self):  # Y方向の梁の呼び出し
-        self.no = self.member_no_y
-        self.i = self.member_i_y
-        self.j = self.member_j_y
-        self.length = self.member_length_y
-        self.Ci = self.member_load_i_y
-        self.Cj = self.member_load_j_y
+        self.N_Lx = []
+        self.N_Ly = []
+        self.N_Sx = []
+        self.N_Sy = []
 
     # 層のクラス
 class Layer():
-    def __init__(self):
-        df4 = pd.read_excel("input_model.xlsx", sheet_name="Story_shear", header=0)
-        self.height = list(df4['Story_height'])
+    def __init__(self,story,height,shear_force_x,shear_force_y,omega_1,omega_2,floor_area):
+        self.story = story
+        self.height = height
+        self.shear_force_x = shear_force_x
+        self.shear_force_y = shear_force_y
+        self.omega1 = omega_1
+        self.omega2 = omega_2
+        self.floor_area = floor_area
 
-    def call_x_dir(self):  # X方向
-        df4 = pd.read_excel("input_model.xlsx", sheet_name="Story_shear", header=0)
-        self.shear_force = list(df4['Shear_force_X'])
+        self.weight = []
+        self.cum_weight = []
+        self.alpha_i = []
+        self.Ai = []
+        self.Ci = []
+        self.Qi = []
 
-    def call_y_dir(self):  # Y方向
-        df4 = pd.read_excel("input_model.xlsx", sheet_name="Story_shear", header=0)
-        self.shear_force = list(df4['Shear_force_Y'])
+        self.horizontal_disp_x = []#層間変形
+        self.horizontal_disp_y = []
+        self.horizontal_angle_x = []#層間変形角
+        self.horizontal_angle_y = []
