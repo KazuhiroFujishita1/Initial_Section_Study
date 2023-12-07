@@ -14,7 +14,8 @@ update_section.py:応力算定結果などに基づく断面更新プログラ�
 input_model.xlsx：対象モデルの諸元に関する入力ファイル  
 input_load_condition.yaml：地震荷重算定などのパラメータ入力ファイル  
 ＜内部計算用＞  
-column_list.csv、beam_list.csv：柱梁部材リストを暫定的に作成(梁リストについてはコスパ、デザインのものを全て入れた）   
+column_list.csv、beam_list.csv：柱梁部材リストを暫定的に作成  
+(梁リストについてはコスパ、デザインのものを全て入れた）   
 y0_table.csv、y1_table.csv、y2_table.csv：反曲点高比の算定用シート  
 
 ## アウトプットファイル
