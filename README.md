@@ -6,7 +6,7 @@
 main.py：メインプログラム  
 member_class.py：部材変数を整理したクラス  
 set_initial_section.py：初期仮定断面を設定するプログラム  
-calc_stress.py：固定モーメント法、D値法により部材応力を算定するプログラム 
+calc_stress.py：固定モーメント法、D値法により部材応力を算定するプログラム  
 calc_weight.py：重量、地震荷重などの算定関連  
 update_section.py:応力算定結果などに基づく断面更新プログラム  
 input_model.xlsx：対象モデルの諸元に関する入力ファイル  
