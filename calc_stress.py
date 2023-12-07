@@ -31,12 +31,12 @@ def calc_moment(FEM_sum,member_no_each_node,myu,nodes,beams,columns,beam_no):
         for j in range(len(nodes)):  # i端の算定
             if i.i == nodes[j].no:
                 for k in range(len(member_no_each_node[j])):
-                    if i.no + len(beam_no) == member_no_each_node[j][k]:
+                    if i.no + len(beams) == member_no_each_node[j][k]:
                         temp_i = float(myu[j][k])
 
             if i.j == nodes[j].no:
                 for k in range(len(member_no_each_node[j])):
-                    if i.no  +len(beam_no) == member_no_each_node[j][k]:
+                    if i.no  +len(beams) == member_no_each_node[j][k]:
                         temp_j = float(myu[j][k])
 
         D1.append([-FEM_sum[i.i - 1] * temp_i, -FEM_sum[i.j - 1] * temp_j])
@@ -51,20 +51,17 @@ def detect_connection(nodes,beams,columns):
 
     for i in nodes:
         #X方向の梁
-        temp_x = [];member_stiff_temp_x=[];member_stiff_temp2_x=[];temp4_x=[]
+        temp_x = [];temp4_x=[]
         count_x=0
         for j in beams:
             if j.direction == "X": #X方向の場合
                 count_x+=1
                 if i.no == j.i or i.no == j.j :
                     if j.category == "BB":#基礎梁の場合
-                        member_stiff_temp2_x.append(1000000000)
                         temp4_x.append(j.no)
                     else:
                         temp_x.append(j.no)
                         temp4_x.append(j.no)
-                        member_stiff_temp2_x.append(j.stiff_ratio)  # 固定モーメント法の時は基礎梁剛性は無限大
-                        member_stiff_temp_x.append(j.stiff_ratio)
         i.beam_no_each_node_x = temp_x
         i.beam_no_each_node2_x = temp4_x#D値法計算用のリスト（基礎梁含む）
 
@@ -72,25 +69,20 @@ def detect_connection(nodes,beams,columns):
         for j in columns:
             if i.no == j.i or i.no == j.j :
                 temp3_x.append(j.no)
-                temp2_x.append(j.no + count_x)
-                member_stiff_temp_x.append(j.stiff_ratio_x)
-                member_stiff_temp2_x.append(j.stiff_ratio_x)
+                temp2_x.append(j.no + len(beams))
 
         #Y方向の梁
-        temp_y = [];member_stiff_temp_y = [];member_stiff_temp2_y = [];temp4_y = []
+        temp_y = [];temp4_y = []
         count_y=0
         for j in beams:
             if j.direction == "Y":  # Y方向の場合
                 count_y+=1
                 if i.no == j.i or i.no == j.j:
                     if j.category == "BB":#基礎梁の場合
-                        member_stiff_temp2_y.append(1000000000)
                         temp4_y.append(j.no)
                     else:
                         temp_y.append(j.no)
                         temp4_y.append(j.no)
-                        member_stiff_temp2_y.append(j.stiff_ratio)  # 固定モーメント法の時は基礎梁剛性は無限大
-                        member_stiff_temp_y.append(j.stiff_ratio)
 
         i.beam_no_each_node_y = temp_y
         i.beam_no_each_node2_y = temp4_y  # D値法計算用のリスト（基礎梁含む）
@@ -99,9 +91,7 @@ def detect_connection(nodes,beams,columns):
         for j in columns:
             if i.no == j.i or i.no == j.j :
                 temp3_y.append(j.no)
-                temp2_y.append(j.no + count_y)
-                member_stiff_temp_y.append(j.stiff_ratio_x)
-                member_stiff_temp2_y.append(j.stiff_ratio_x)
+                temp2_y.append(j.no + len(beams))
 
         i.column_no_each_node_x = temp3_x
         i.column_no_each_node_y = temp3_y
@@ -109,10 +99,6 @@ def detect_connection(nodes,beams,columns):
         i.member_no_each_node_y = temp_y+temp2_y#全部材を通し番号で整理
         i.member_no_each_node2_x = temp4_x+temp2_x#全部材を通し番号で整理（基礎梁含む）
         i.member_no_each_node2_y = temp4_y+temp2_y#全部材を通し番号で整理（基礎梁含む）
-        i.node_member_stiff_x = member_stiff_temp_x
-        i.node_member_stiff_y = member_stiff_temp_y
-        i.node_member_stiff2_x = member_stiff_temp2_x
-        i.node_member_stiff2_y = member_stiff_temp2_y
 
 #固定モーメント法による長期荷重の算定(鹿島様受領Excel（固定モーメント法）の通り）
 # #各節点に接続する梁の固定端モーメントの算定
@@ -141,7 +127,6 @@ def fixed_moment_method(nodes,beams,columns,EE):
         elif len(i.node_member_stiff2_y) == 1:
             myu_temp.append(1)
         myu_y.append(myu_temp)
-
 
 #各節点の梁の固定端モーメントの算定（1回目）
     FEM1_x = [];FEM1_y = [];beam_no_x=[];beam_no_y=[]
@@ -173,6 +158,7 @@ def fixed_moment_method(nodes,beams,columns,EE):
     D1_x,C1_x,C1_sum_x = calc_moment(FEM_sum_x,member_no_each_node2_x,myu_x,nodes,beams,columns,beam_no_x)
     D1_y,C1_y,C1_sum_y = calc_moment(FEM_sum_y,member_no_each_node2_y,myu_y,nodes,beams,columns,beam_no_y)
 
+
 #各部材ごとに梁の分担モーメントの算定（2回目）
     D2_x,C2_x,C2_sum_x = calc_moment(C1_sum_x,member_no_each_node2_x,myu_x,nodes,beams,columns,beam_no_x)
     D2_y,C2_y,C2_sum_y = calc_moment(C1_sum_y,member_no_each_node2_y,myu_y,nodes,beams,columns,beam_no_y)
@@ -197,40 +183,37 @@ def fixed_moment_method(nodes,beams,columns,EE):
         temp += 1
 
 #各部材ごとに大梁のたわみ算定
-    center_moment_x=[]; center_moment_y=[];
     temp=0
     for i in beam_no_x:
-        center_moment_x.append(-beams[i-1].dist_load*beams[i-1].length**2/8
-                             -np.average([abs(beams[i-1].M_Lx[0]),abs(beams[i-1].M_Lx[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
-        beams[i-1].delta_x = (5*center_moment_x[temp]/(48*EE*beams[i-1].I)*beams[i-1].length**2
+        beams[i-1].M_Lx0 = -beams[i-1].M0\
+                          -np.average([abs(beams[i-1].M_Lx[0]),abs(beams[i-1].M_Lx[1])])#固定端モーメントを考慮した梁中央の曲げモーメントM0
+        beams[i-1].delta_x = (5*beams[i-1].M_Lx0/(48*EE*beams[i-1].I)*beams[i-1].length**2
                               -sum(beams[i-1].M_Lx)/(16*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証）
         temp += 1
     temp=0
     for i in beam_no_y:
-        center_moment_y.append(-beams[i-1].dist_load*beams[i-1].length**2/8
-                             -np.average([abs(beams[i-1].M_Ly[0]),abs(beams[i-1].M_Ly[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
-        beams[i-1].delta_y = (5*center_moment_y[temp]/(48*EE*beams[i-1].I)*beams[i-1].length**2
+        beams[i-1].M_Ly0 = -beams[i-1].M0\
+                          -np.average([abs(beams[i-1].M_Ly[0]),abs(beams[i-1].M_Ly[1])])#固定端モーメントを考慮した梁中央の曲げモーメントM0
+        beams[i-1].delta_y = (5*beams[i-1].M_Ly0/(48*EE*beams[i-1].I)*beams[i-1].length**2
                             -sum(beams[i-1].M_Ly)/(16*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証）
         temp += 1
 
     # 梁のせん断力の算定
-    Q0 = []
     #X方向
     temp = 0
     for i in beam_no_x:
         temp2 = beams[i-1].M_Lx
-        Q0.append(6 * beams[i-1].Ci / beams[i-1].length)  # 分布荷重を想定した単純梁を仮定
-        beams[i-1].Q_Lx = [Q0[temp] - (temp2[0] + temp2[1]) / beams[i-1].length,
-                                 Q0[temp] + (temp2[0] + temp2[1]) / beams[i-1].length]
+        Q0_temp = beams[i-1].Q0  # 分布荷重を想定した単純梁を仮定
+        beams[i-1].Q_Lx = [Q0_temp - (temp2[0] + temp2[1]) / beams[i-1].length,
+                                 Q0_temp + (temp2[0] + temp2[1]) / beams[i-1].length]
         temp += 1
     #Y方向
-    Q0 = []
     temp = 0
     for i in beam_no_y:
         temp2 = beams[i-1].M_Ly
-        Q0.append(6 * beams[i-1].Ci / beams[i-1].length)  # 分布荷重を想定した単純梁を仮定
-        beams[i-1].Q_Ly = [Q0[temp] - (temp2[0] + temp2[1]) / beams[i-1].length,
-                                 Q0[temp] + (temp2[0] + temp2[1]) / beams[i-1].length]
+        Q0_temp = beams[i-1].Q0  # 分布荷重を想定した単純梁を仮定
+        beams[i-1].Q_Ly = [Q0_temp - (temp2[0] + temp2[1]) / beams[i-1].length,
+                                 Q0_temp + (temp2[0] + temp2[1]) / beams[i-1].length]
         temp += 1
 
     # 柱のせん断力の算定
@@ -340,13 +323,14 @@ def calc_D(nodes,columns,beams,layers,direction,D_sum):
             temp2 = nodes[i.j - 1].beam_no_each_node2_y  # j端部材no
 
         temp_stiff=[];temp_stiff_i=[];temp_stiff_j=[]
-        flag = 0
-        if (nodes[i.i-1].boundary_cond == "pin" or
-                nodes[i.j-1].boundary_cond == "pin"):
-            flag = 1  # 柱のi,j側節点にピン支点が含まれる場合
-        elif (nodes[i.i-1].boundary_cond == "fix" or
-                nodes[i.j-1].boundary_cond == "fix"):
-            flag = 2  # 柱のi,j側節点に固定支点が含まれる場合
+        #flag = 0
+        #if (nodes[i.i-1].boundary_cond == "pin" or
+        #        nodes[i.j-1].boundary_cond == "pin"):
+        #    flag = 1  # 柱のi,j側節点にピン支点が含まれる場合
+        #elif (nodes[i.i-1].boundary_cond == "fix" or
+        #        nodes[i.j-1].boundary_cond == "fix"):
+        #    flag = 2  # 柱のi,j側節点に固定支点が含まれる場合
+        flag = 3 #とりあえず基礎梁があるものとし、D値法では境界条件の影響は考えない。
 
         for j in temp:#i端側に接続する梁部材の剛性のみを抽出
             temp_stiff.append(beams[j-1].stiff_ratio)
@@ -367,7 +351,7 @@ def calc_D(nodes,columns,beams,layers,direction,D_sum):
             a.append((0.5+kk_temp)/(2+kk_temp))#柱脚固定の場合
             D.append(i.stiff_ratio_x * (0.5+kk_temp)/(2+kk_temp))
             alpha1.append(0) #最下層ではα1=0
-        else:
+        elif flag == 3:
             kk_temp = sum(temp_stiff)/(2*i.stiff_ratio_x)
             kk.append(kk_temp)
             a.append(kk_temp/(2+kk_temp))#一般階の場合
@@ -423,7 +407,6 @@ def D_method(nodes,layers,beams,columns,EE):
         else:
             i.shear_force_x = i.shear_force_x
             i.shear_force_y = i.shear_force_y
-            print(i.shear_force_x)
 
     #柱のせん断力、曲げモーメントを算定
     for i in columns:
@@ -563,4 +546,32 @@ def D_method(nodes,layers,beams,columns,EE):
         i.horizontal_angle_y = 1/(i.horizontal_disp_y/i.height/1000)
         temp +=1
 
+#柱梁の長期・短期荷重の算定
+def load_calc(beams,columns):
+    #大梁の荷重算定
+    for i in beams:
+        if i.direction == "X":
+            i.ML = max(abs(i.M_Lx[0]),abs(i.M_Lx[1]),abs(i.M_Lx0))
+            i.QL = abs(i.Q_Lx[0])
+            i.Ms = max(abs(i.M_Lx0),abs(i.M_Sx[0])+abs(i.M_Lx[0]))
+            i.Qs = max(abs(i.Q_Lx[0]),abs(i.Q_Lx[1]))+i.Q_Sx
+        else:
+            i.ML = max(abs(i.M_Ly[0]),abs(i.M_Ly[1]),abs(i.M_Ly0))
+            i.QL = abs(i.Q_Ly[0])
+            i.Ms = max(abs(i.M_Ly0),abs(i.M_Sy[0])+abs(i.M_Ly[0]))
+            i.Qs = max(abs(i.Q_Ly[0]),abs(i.Q_Ly[1]))+i.Q_Sy
+
+    #柱の荷重算定
+    for i in columns:
+        i.MLx = max(abs(i.M_Lx[0]),abs(i.M_Lx[1]))
+        i.MLy = max(abs(i.M_Ly[0]),abs(i.M_Ly[1]))
+        i.QLx = i.Q_Lx[0]
+        i.QLy = i.Q_Ly[0]
+        i.NL = i.N_Lx
+        i.MSx = i.MLx + max(abs(i.M_Sx[0]),abs(i.M_Sx[1]))
+        i.QSx = i.QLx + i.Q_Sx
+        i.NSx = i.NL + abs(i.N_Sx)
+        i.NSy = i.NL + abs(i.N_Sy)
+        i.MSy = i.MLy + max(abs(i.M_Sy[0]),abs(i.M_Sy[1]))
+        i.QSy = i.QLy + i.Q_Sy
 

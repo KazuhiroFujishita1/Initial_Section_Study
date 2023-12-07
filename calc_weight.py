@@ -1,9 +1,24 @@
 from member_class import *
 import math
+import yaml
 
 #層重量、地震荷重の算定
 def calc_layer_weight(beams,columns,layers,maximum_height):
     df1 = pd.read_excel("input_model.xlsx", sheet_name="Story_shear", header=0)
+
+    #地震荷重算定用パラメータに関するyamlファイルの読み込み
+    file_path = "input_load_condition.yaml"
+
+    with open(file_path, 'r') as file:
+        data = yaml.safe_load(file)
+
+    if data:
+        St_type = data.get('StructuralType')
+        C0 = data.get('Baseshear')
+        Rt = data.get('Rt')
+        Z = data.get('Z')
+    else:
+        print("load_condition can not be read.")
 
     #層重量の算定(とりあえず鹿島様のPPT p.3の通りに実装した）
     #内部計算した部材自重の扱いについては鹿島様要相談
@@ -17,13 +32,10 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
         layers[i].cum_weight = temp
 
     #1次固有周期の算定
-    T = 0.03*maximum_height
-    #ベースシア係数の仮定
-    C0 = 0.2
-    #振動特性係数Rtの算定
-    Rt = 1 #軟弱地盤の影響は考慮しない
-    #地域係数Zの算定
-    Z = 1 #地域係数による影響は考慮しない
+    if St_type == 'Steel':
+        T = 0.03*maximum_height
+    elif St_type == 'Concrete':
+        T = 0.02*maximum_height
 
     #地震荷重の算定
     for i in range(len(layers)):
@@ -32,4 +44,17 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
         layers[i].Ci = Z * Rt * layers[i].Ai * C0
         layers[i].Qi = layers[i].Ci * layers[i].cum_weight
 
+    #各層の柱本数のカウント
+    for i in range(len(layers)):
+        count = 0
+        for j in columns:
+            if j.story == layers[i].story:
+                count += 1
+        layers[i].column_num = count
+
+    #各層柱の長期軸力の仮定
+    # （とりあえず層重量／柱本数で算定、鹿島様PPTの内容は各柱の負担面積を算定の上、軸力を算定している）
+    for i in columns:
+        i.N_Lx = layers[len(layers)-i.story].cum_weight/layers[len(layers)-i.story].column_num
+        i.N_Ly = layers[len(layers)-i.story].cum_weight/layers[len(layers)-i.story].column_num
 
