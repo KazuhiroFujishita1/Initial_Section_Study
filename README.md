@@ -9,9 +9,13 @@ set_initial_section.py：初期仮定断面を設定するプログラム
 calc_stress.py：固定モーメント法、D値法により部材応力を算定するプログラム  
 calc_weight.py：重量、地震荷重などの算定関連  
 update_section.py:応力算定結果などに基づく断面更新プログラム  
+make_sample_model:grasshopperによる解析モデルの生成スクリプトと解析モデルのデータ  
 
 ## インプットファイル
-input_model.xlsx：対象モデルの諸元に関する入力ファイル  
+./make_sample_model/output_node.csv：解析モデルの節点データ  
+./make_sample_model/output_beams.csv：解析モデルの梁データ  
+./make_sample_model/output_columns.csv：解析モデルの柱データ  
+./make_sample_model/output_layer.csv：解析モデルの層データ  
 input_load_condition.yaml：地震荷重算定などのパラメータ入力ファイル  
 ＜内部計算用＞  
 column_list.csv、beam_list.csv：柱梁部材リストを暫定的に作成  
