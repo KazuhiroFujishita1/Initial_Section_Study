@@ -4,7 +4,8 @@ import yaml
 
 #層重量、地震荷重の算定
 def calc_layer_weight(beams,columns,layers,maximum_height):
-    df1 = pd.read_excel("input_model.xlsx", sheet_name="Story_shear", header=0)
+    #df1 = pd.read_excel("input_model.xlsx", sheet_name="Story_shear", header=0)
+    df1 = pd.read_csv("./make_sample_model/output_layer.csv", header=0)
 
     #地震荷重算定用パラメータに関するyamlファイルの読み込み
     file_path = "input_load_condition.yaml"

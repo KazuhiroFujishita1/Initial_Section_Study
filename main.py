@@ -32,6 +32,8 @@ if __name__ == "__main__":
 
 #柱梁の長期・短期荷重まとめ
     load_calc(beams,columns)
+    for i in beams:
+        print(i.no, i.M_Sx, i.M_Sy)
 
 #大梁断面の更新
     update_beam_section(nodes,beams,beam_select_mode)

@@ -10,7 +10,8 @@ def calc_length(member_i,member_j,nodes):
 #データの読み込み
 def read_model():
     # 節点の情報を収集
-    df1 = pd.read_excel("input_model.xlsx", sheet_name="Node", header=0)
+    df1 = pd.read_csv("./make_sample_model/output_node.csv",header=0)
+    #df1 = pd.read_excel("input_model.xlsx", sheet_name="Node", header=0)
     node_data = []
     for i in range(len(df1)):
         node_data.append((df1['No'][i],df1['x'][i],df1['y'][i],df1['z'][i],df1['boundary'][i]))
@@ -18,7 +19,8 @@ def read_model():
     nodes = [Node(*data) for data in node_data] #節点インスタンスの作成
 
     #　梁の情報を収集
-    df2 = pd.read_excel("input_model.xlsx", sheet_name="Beam", header=0)
+    df2 = pd.read_csv("./make_sample_model/output_beams.csv",header=0)
+    #df2 = pd.read_excel("input_model.xlsx", sheet_name="Beam", header=0)
     beam_data = []
     for i in range(len(df2)):
         #梁長さの算定
@@ -38,12 +40,13 @@ def read_model():
         else:
             beam_direction="Y"
         beam_data.append((df2['No.'][i],df2['i_point'][i],df2['j_point'][i],beam_length,
-                          dist_load,beam_load_i,beam_load_j,df2['category'][i],beam_direction,df2['Φ'][i],M0,Q0))
+                          dist_load,beam_load_i,beam_load_j,df2['category'][i],beam_direction,df2['phai'][i],M0,Q0))
 
     beams = [Beam(*data) for data in beam_data] #梁インスタンスの作成
 
     #柱の情報を収集
-    df3 = pd.read_excel("input_model.xlsx", sheet_name="Column", header=0)
+    df3 = pd.read_csv("./make_sample_model/output_columns.csv",header=0)
+    #df3 = pd.read_excel("input_model.xlsx", sheet_name="Column", header=0)
     column_data = [];
     for i in range(len(df3)):
         #柱長さの算定
@@ -54,7 +57,8 @@ def read_model():
     columns = [Column(*data) for data in column_data]#柱インスタンスの作成
 
     #層の情報を収集
-    df4 = pd.read_excel("input_model.xlsx", sheet_name="Story_shear", header=0)
+    df4 = pd.read_csv("./make_sample_model/output_layer.csv",header=0)
+    #df4 = pd.read_excel("input_model.xlsx", sheet_name="Story_shear", header=0)
     layer_data = []; maximum_height =0
     for i in range(len(df4)):
         layer_data.append((df4['Story'][i],df4['Story_height'][i],df4['omega_1'][i],df4['omega_2'][i],df4['floor_area'][i]))

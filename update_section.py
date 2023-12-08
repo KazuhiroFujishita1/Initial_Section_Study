@@ -38,7 +38,7 @@ def update_beam_section(nodes,beams,beam_select_mode):
                             target_row = selected_beam_list[selected_beam_list['No'] == temp]
 
                             if i.judge_b_L >= 0.9 or i.judge_b_s >= 0.9:#曲げが厳しい場合、選定リストの断面係数を確認
-                                if float(target_row['Z'])/i.Z > max(i.judge_b_L,i.judge_b_s)/0.9:#検定比を満たせる程度Zがあげられた場合断面更新
+                                if float(target_row['Z'])/i.Z * float(target_row['F'])/i.F > max(i.judge_b_L,i.judge_b_s)/0.9:#検定比を満たせる程度Zがあげられた場合断面更新(F値の違いの影響も考慮）
                                     i.I = float(target_row['Ix'])  # 断面諸元の更新
                                     i.H = float(target_row['H'])
                                     i.B = float(target_row['B'])
@@ -49,7 +49,7 @@ def update_beam_section(nodes,beams,beam_select_mode):
                                     i.F = float(target_row['F'])
                                     break
                             if i.judge_s_L >= 0.9 or i.judge_s_s >= 0.9:#せん断が厳しい場合、選定リストのウェブ断面積を確認
-                                if float(target_row['H'])*float(target_row['t1'])/i.H*i.t1 > max(i.judge_s_L,i.judge_s_s)/0.9:#検定比を満たせる程度ウェブ断面積があげられた場合断面更新
+                                if float(target_row['H'])*float(target_row['t1'])/i.H*i.t1 * float(target_row['F'])/i.F > max(i.judge_s_L,i.judge_s_s)/0.9:#検定比を満たせる程度ウェブ断面積があげられた場合断面更新(F値の違いの影響も考慮）
                                     i.I = float(target_row['Ix'])  # 断面諸元の更新
                                     i.H = float(target_row['H'])
                                     i.B = float(target_row['B'])
@@ -61,8 +61,9 @@ def update_beam_section(nodes,beams,beam_select_mode):
                                     break
                             if (i.judge_b_L >= 0.9 or i.judge_b_s >= 0.9) and (i.judge_s_L >= 0.9 or i.judge_s_s >= 0.9):
                         #曲げとせん断がともに厳しい場合、選定リストのウェブ断面積を確認
-                                if (float(target_row['Z'])/i.Z > max(i.judge_b_L,i.judge_b_s)/0.9) and \
-                                (float(target_row['H'])*float(target_row['t1'])/i.H*i.t1 > max(i.judge_s_L,i.judge_s_s)/0.9):#検定比を満たせる程度断面係数、ウェブ断面積があげられた場合断面更新
+                                if (float(target_row['Z'])/i.Z *float(target_row['F'])/i.F > max(i.judge_b_L,i.judge_b_s)/0.9) and \
+                                (float(target_row['H'])*float(target_row['t1'])/i.H*i.t1 * float(target_row['F'])/i.F >
+                                 max(i.judge_s_L,i.judge_s_s)/0.9):#検定比を満たせる程度断面係数、ウェブ断面積があげられた場合断面更新
                                     i.I = float(target_row['Ix'])  # 断面諸元の更新
                                     i.H = float(target_row['H'])
                                     i.B = float(target_row['B'])
@@ -313,12 +314,12 @@ def member_strength_check(nodes,beams,columns):
 
         #柱梁耐力比が1.0以下の場合、1以上にするために必要な柱の全塑性モーメントを求める
         if len(i.column_no_each_node_x) > 1:#最上層、最下層以外で検討
-            i.req_Mpx = temp_beam_Mp_x / 2
+            i.req_Mpx = temp_beam_Mp_x / len(i.beam_no_each_node_x)
         else:
             i.req_Mpx = 0
 
         if len(i.column_no_each_node_y) > 1:  # 最上層、最下層以外で検討
-            i.req_Mpy = temp_beam_Mp_y / 2
+            i.req_Mpy = temp_beam_Mp_y / len(i.beam_no_each_node_y)
         else:
             i.req_Mpy = 0
 
@@ -343,6 +344,7 @@ def calc_limit_column_size(nodes,layers,columns,beams,EE):
         #柱梁耐力比チェックに基づく全塑性モーメントのクライテリアの呼び出し
         minimum_Mpx = max(float(nodes[i.i-1].req_Mpx),float(nodes[i.j-1].req_Mpx)) / i.decrement_ratio_x
         minimum_Mpy = max(float(nodes[i.i-1].req_Mpy),float(nodes[i.j-1].req_Mpy)) / i.decrement_ratio_y
+
         #柱リストより得られた各諸元以上のキャパシティを有する柱断面の選定
         filtered_data = column_list[(column_list['Mpx'] > minimum_Mpx) & (column_list['Mpy'] > minimum_Mpy)
                                     & (column_list['Ix'] > minimum_Ix) & (column_list['Iy'] > minimum_Iy)]

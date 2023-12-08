@@ -553,12 +553,14 @@ def load_calc(beams,columns):
         if i.direction == "X":
             i.ML = max(abs(i.M_Lx[0]),abs(i.M_Lx[1]),abs(i.M_Lx0))
             i.QL = abs(i.Q_Lx[0])
-            i.Ms = max(abs(i.M_Lx0),abs(i.M_Sx[0])+abs(i.M_Lx[0]))
+            #中央及び端部の最大値として算定
+            i.Ms = max(abs(i.M_Lx0),abs(i.M_Sx[0])+abs(i.M_Lx[0]),abs(i.M_Sx[1])+abs(i.M_Lx[1]))
             i.Qs = max(abs(i.Q_Lx[0]),abs(i.Q_Lx[1]))+i.Q_Sx
         else:
             i.ML = max(abs(i.M_Ly[0]),abs(i.M_Ly[1]),abs(i.M_Ly0))
             i.QL = abs(i.Q_Ly[0])
-            i.Ms = max(abs(i.M_Ly0),abs(i.M_Sy[0])+abs(i.M_Ly[0]))
+            #中央及び端部の最大値として算定
+            i.Ms = max(abs(i.M_Ly0),abs(i.M_Sy[0])+abs(i.M_Ly[0]),abs(i.M_Sy[1])+abs(i.M_Ly[1]))
             i.Qs = max(abs(i.Q_Ly[0]),abs(i.Q_Ly[1]))+i.Q_Sy
 
     #柱の荷重算定
