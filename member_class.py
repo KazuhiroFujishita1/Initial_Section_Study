@@ -40,7 +40,7 @@ def read_model():
         else:
             beam_direction="Y"
         beam_data.append((df2['No.'][i],df2['i_point'][i],df2['j_point'][i],beam_length,
-                          dist_load,beam_load_i,beam_load_j,df2['category'][i],beam_direction,df2['phai'][i],M0,Q0))
+                          dist_load,beam_load_i,beam_load_j,df2['category'][i],beam_direction,df2['phai'][i],M0,Q0,df2['story'][i]))
 
     beams = [Beam(*data) for data in beam_data] #梁インスタンスの作成
 
@@ -99,7 +99,7 @@ class Node():
     # 梁のクラス
 class Beam():
     def __init__(self,beam_no,beam_i,beam_j,beam_length,
-                 dist_load,beam_load_i,beam_load_j,beam_category,beam_direction,beam_phai,M0,Q0):
+                 dist_load,beam_load_i,beam_load_j,beam_category,beam_direction,beam_phai,M0,Q0,story):
         self.no = beam_no
         self.i = beam_i
         self.j = beam_j
@@ -113,6 +113,7 @@ class Beam():
         self.Cj = beam_load_j#j端の固定端モーメント
         self.category = beam_category#基礎梁か否か
         self.direction = beam_direction#梁方向
+        self.story = story
 
         self.M0 = M0#MQ荷重※とりあえずM0は単純梁の曲げモーメントとして内部計算に使用
         self.Q0 = Q0
@@ -127,6 +128,8 @@ class Beam():
         self.H = []
         self.t1 = []
         self.t2 = []
+
+        self.init_group = []#初期断面のグルーピング
 
         self.Mp = []#選択された部材の全塑性モーメント
 
@@ -188,6 +191,8 @@ class Column():
         self.stiff_ratio_y = []#stiff_ratio_y
         self.F = []#FF
         self.base_K = [] #柱せいより決まる等価な基礎梁剛度
+
+        self.init_group = []#初期断面のグルーピング
 
         self.Mpx = []#全塑性曲げモーメント
         self.Mpy = []#全塑性曲げモーメント
@@ -278,3 +283,12 @@ class Layer():
         self.I_limit1_x = []#剛性バランスにより決まる各層の柱断面二次モーメントのクライテリア
         self.I_limit1_y = []#剛性バランスにより決まる各層の柱断面二次モーメントのクライテリア
 
+class Column_Group():#柱グループ
+    def __init__(self,group_name,group_ID):
+        self.group_name = group_name
+        self.ID = group_ID
+
+class Beam_Group():#梁グループ
+    def __init__(self,group_name,group_ID):
+        self.group_name = group_name
+        self.ID = group_ID

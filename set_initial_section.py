@@ -1,6 +1,8 @@
 import pandas as pd
 import math
 import numpy as np
+import itertools
+import member_class
 
 #初期仮定断面の設定
 #Excelで入力した全柱梁部材に対して初期仮定断面を算定する
@@ -66,6 +68,18 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
         column_KX.append(i.Ix/i.length*1000000)
         column_KY.append(i.Iy/i.length*1000000)
 
+    #初期柱断面のグルーピング
+    temp_list=[[columns[i].no,columns[i].H,columns[i].t,columns[i].story]
+           for i in range(len(columns))]
+    data_frame = pd.DataFrame(temp_list,columns = ["No","H","t","story"])
+    sorted_frame = data_frame.sort_values(by=['story', 'H'])
+
+    group_data=[]
+    for name, group in sorted_frame.groupby(['story']):
+        for name2, group2 in group.groupby(['H']):
+            group_data.append((str(name)+'F_'+str(name2),list(group2['No'])))
+    column_groups = [member_class.Column_Group(*data) for data in group_data]  # 柱グループのインスタンス定義
+
     # 柱の剛比算定（柱の剛度の最大値を標準剛度とみなし1とする）
     maximum_KX = max(column_KX)
     maximum_KY = max(column_KY)
@@ -118,6 +132,27 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
         else:#とりあえずi端側の柱を参照
             i.K = columns[nodes[i.i-1].column_no_each_node_x[0]-1].base_K
             i.stiff_ratio = columns[nodes[i.i-1].column_no_each_node_x[0]-1].base_K/100
+            i.selected_section_no = ""
+            i.I =  0
+            i.H =  0
+            i.B =  0
+            i.t1 =  0
+            i.t2 =  0
+            i.Z = 0
+            i.Zp = 0
+            i.F = 0
+
+    #初期梁断面のグルーピング
+    group_data=[]
+    temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
+           for i in range(len(beams))]
+    data_frame2 = pd.DataFrame(temp_list,columns = ["No","H","B","story"])
+    sorted_frame2 = data_frame2.sort_values(by=['story','H'])
+
+    for name, group in sorted_frame2.groupby(['story']):
+        for name2, group2 in group.groupby(['H']):
+            group_data.append((str(name) + 'F_' + str(name2),list(group2['No'])))
+    beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの作成
 
     #架構の剛性配置を整理
     for i in nodes:
@@ -162,6 +197,8 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
         i.node_member_stiff_y = member_stiff_temp_y
         i.node_member_stiff2_x = member_stiff_temp2_x
         i.node_member_stiff2_y = member_stiff_temp2_y
+
+    return beam_groups,column_groups
 
 
 

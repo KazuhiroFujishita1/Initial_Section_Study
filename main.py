@@ -22,8 +22,10 @@ if __name__ == "__main__":
     detect_connection(nodes,beams,columns)
 
 #初期仮定断面の設定
-    set_initial_section(nodes,beams, columns,maximum_height,beam_select_mode)
+    beam_groups,column_groups = set_initial_section(nodes,beams, columns,maximum_height,beam_select_mode)
 
+    for i in column_groups:
+        print(i.group_name,i.ID)
 #固定モーメント法
     fixed_moment_method(nodes,beams,columns,EE)
 
