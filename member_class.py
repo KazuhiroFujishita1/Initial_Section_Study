@@ -284,11 +284,16 @@ class Layer():
         self.I_limit1_y = []#剛性バランスにより決まる各層の柱断面二次モーメントのクライテリア
 
 class Column_Group():#柱グループ
-    def __init__(self,group_name,group_ID):
+    def __init__(self,group_no,group_name,group_ID):
+        self.no = group_no
         self.group_name = group_name
         self.ID = group_ID
 
 class Beam_Group():#梁グループ
-    def __init__(self,group_name,group_ID):
+    def __init__(self,group_no,group_name,group_ID):
+        self.no = group_no
         self.group_name = group_name
         self.ID = group_ID
+        self.neighbor_beam = []
+        self.neighbor_group = []
+        self.neighbor_group_no = []

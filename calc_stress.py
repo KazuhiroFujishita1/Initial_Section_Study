@@ -182,21 +182,30 @@ def fixed_moment_method(nodes,beams,columns,EE):
         i.M_Ly = np.array(D1_y[temp])+np.array(C1_y[temp])+np.array(D2_y[temp])+np.array(C2_y[temp])#固定モーメント法の解
         temp += 1
 
-#各部材ごとに大梁のたわみ算定
+#各部材ごとに大梁のたわみ算定(ダミーの基礎梁は除く）
     temp=0
     for i in beam_no_x:
-        beams[i-1].M_Lx0 = -beams[i-1].M0\
+        if beams[i-1].category != "BB":
+            beams[i-1].M_Lx0 = -beams[i-1].M0\
                           -np.average([abs(beams[i-1].M_Lx[0]),abs(beams[i-1].M_Lx[1])])#固定端モーメントを考慮した梁中央の曲げモーメントM0
-        beams[i-1].delta_x = (5*beams[i-1].M_Lx0/(48*EE*beams[i-1].I)*beams[i-1].length**2
+            beams[i-1].delta_x = (5*beams[i-1].M_Lx0/(48*EE*beams[i-1].I)*beams[i-1].length**2
                               -sum(beams[i-1].M_Lx)/(16*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証）
-        temp += 1
+            temp += 1
+        else:#基礎梁の場合、とりあえず0に
+            beams[i - 1].M_Lx0 = 0
+            beams[i - 1].delta_x = 0
+
     temp=0
     for i in beam_no_y:
-        beams[i-1].M_Ly0 = -beams[i-1].M0\
+        if beams[i-1].category != "BB":
+            beams[i-1].M_Ly0 = -beams[i-1].M0\
                           -np.average([abs(beams[i-1].M_Ly[0]),abs(beams[i-1].M_Ly[1])])#固定端モーメントを考慮した梁中央の曲げモーメントM0
-        beams[i-1].delta_y = (5*beams[i-1].M_Ly0/(48*EE*beams[i-1].I)*beams[i-1].length**2
+            beams[i-1].delta_y = (5*beams[i-1].M_Ly0/(48*EE*beams[i-1].I)*beams[i-1].length**2
                             -sum(beams[i-1].M_Ly)/(16*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証）
-        temp += 1
+            temp += 1
+        else:#基礎梁の場合、とりあえず0に
+            beams[i-1].M_Ly0 = 0
+            beams[i-1].delta_y = 0
 
     # 梁のせん断力の算定
     #X方向
