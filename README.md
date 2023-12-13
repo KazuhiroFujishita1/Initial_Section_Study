@@ -9,7 +9,12 @@ set_initial_section.py：初期仮定断面を設定するプログラム
 calc_stress.py：固定モーメント法、D値法により部材応力を算定するプログラム  
 calc_weight.py：重量、地震荷重などの算定関連  
 update_section.py:応力算定結果などに基づく断面更新プログラム  
-make_sample_model:grasshopperによる解析モデルの生成スクリプトと解析モデルのデータ  
+make_sample_modelフォルダ:grasshopperによる解析モデルの生成データ  
+make_sample_model.gh:grasshopperによる3次元解析モデルの生成処理（各種インプットcsvファイルの生成）とプログラムによる算定断面のポスト処理（アウトプットファイルの読み込み）の実行スクリプト  
+・節点、梁、柱、層データの生成  
+・各柱の負担面積算定  
+・亀の子割による各梁の負担面積算定および各層の平米床荷重のみを考慮したCMQの概略算定  
+・梁の剛性増大率算定（側梁：1.2、中梁：1.5）  
 
 ## インプットファイル
 ./make_sample_model/output_node.csv：解析モデルの節点データ  
