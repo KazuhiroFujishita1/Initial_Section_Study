@@ -381,6 +381,7 @@ def calc_limit_column_size(nodes,layers,columns,beams,EE):
 
     #得られた最低柱断面諸元に更新
             target_row = column_list[column_list['No'] == i.minimum_selected_section_no]
+            i.t = float(target_row['t'])
             i.A = float(target_row['A'])
             i.Ix = float(target_row['Ix'])
             i.Iy = float(target_row['Iy'])
@@ -396,6 +397,7 @@ def calc_limit_column_size(nodes,layers,columns,beams,EE):
         #選定リストの上限値を超えている場合
         else:
             print("requirement value is over upper limit of column_list.")
+            i.t = "Error"
             i.A = "Error"
             i.Ix = "Error"
             i.Iy = "Error"
@@ -409,9 +411,12 @@ def calc_limit_column_size(nodes,layers,columns,beams,EE):
             i.Zp = "Error"
             i.F = "Error"
 
-
 #応力に基づく柱断面の必要板厚の算定
 def calc_column_thickness(columns):
+
+    #柱リストの読み込み
+    column_list = pd.read_csv("column_list.csv", header=0)
+
     #板厚の設定
     for i in columns:
         if i.H != "Error":#柱の最低断面が決められている場合のみ板厚の更新を実施
@@ -420,14 +425,35 @@ def calc_column_thickness(columns):
             i.tc2y = (0.75*i.MSy*10**6/i.H**2/i.F+i.NL*1000/(4*i.H)/(i.F*0.9))*1.1
             i.tc = max(i.tc1,i.tc2x,i.tc2y)
 
-    #必要板厚に基づく板厚の更新
-            i.t  = math.ceil(i.tc)#小数第一位で切り上げ
+    # #必要板厚に基づく板厚の更新
+    #         i.t  = math.ceil(i.tc)#小数第一位で切り上げ
+    #
+    # #断面諸元の再計算（更新した板厚で実施）
+    #         i.A = ((i.H)**2 - (i.H-i.t*2)**2)/1000000
+    #         i.Ix = (((i.H)**4-(i.H-i.t*2)**4)/12)/10**12
+    #         i.Iy = ((i.H)**4-(i.H-i.t*2)**4)/12/10**12
+    #         i.Z = ((i.H)**4-(i.H-i.t*2)**4)/(6*i.H)/10**9
 
-    #断面諸元の再計算（更新した板厚で実施）
-            i.A = ((i.H)**2 - (i.H-i.t*2)**2)/1000000
-            i.Ix = (((i.H)**4-(i.H-i.t*2)**4)/12)/10**12
-            i.Iy = ((i.H)**4-(i.H-i.t*2)**4)/12/10**12
-            i.Z = ((i.H)**4-(i.H-i.t*2)**4)/(6*i.H)/10**9
+    #柱リストより得られた板厚以上のキャパシティを有する柱断面の選定
+            filtered_data = column_list[(column_list['t'] > i.tc) & (column_list['H'] == i.H)]
+            i.minimum_selected_section_no = list(filtered_data['No'])[0]
+
+    #得られた最低柱断面諸元に更新
+            target_row = column_list[column_list['No'] == i.minimum_selected_section_no]
+
+            i.A = float(target_row['A'])
+            i.t = float(target_row['t'])
+            i.Ix = float(target_row['Ix'])
+            i.Iy = float(target_row['Iy'])
+            i.selected_section_no = float(target_row['No'])
+        #部材自重の算定
+            i.unit_weight = float(target_row["unit_m"]*9.80665/1000)
+            i.weight = i.unit_weight * i.length #部材自重
+        #算定柱せいによる等価な基礎梁剛度の取得
+            i.base_K = float(target_row['base_K'])
+            i.H = float(target_row['H'])
+            i.Zp = float(target_row['Zp'])
+            i.F = float(target_row['F'])
 
 #柱断面を長期・短期応力評価結果に基づいて更新
 def update_column_section(nodes,beams,columns,layers,EE):

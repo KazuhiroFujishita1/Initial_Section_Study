@@ -45,17 +45,9 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
         layers[i].Ci = Z * Rt * layers[i].Ai * C0
         layers[i].Qi = layers[i].Ci * layers[i].cum_weight
 
-    #各層の柱本数のカウント
-    for i in range(len(layers)):
-        count = 0
-        for j in columns:
-            if j.story == layers[i].story:
-                count += 1
-        layers[i].column_num = count
-
     #各層柱の長期軸力の仮定
-    # （とりあえず層重量／柱本数で算定、鹿島様PPTの内容は各柱の負担面積を算定の上、軸力を算定している）
+    # 外部計算した各柱の負担面積の比率に基づいて、各層の層重量を分担
     for i in columns:
-        i.N_Lx = layers[len(layers)-i.story].cum_weight/layers[len(layers)-i.story].column_num
-        i.N_Ly = layers[len(layers)-i.story].cum_weight/layers[len(layers)-i.story].column_num
+        i.N_Lx = layers[len(layers)-i.story].cum_weight * i.load_area / layers[len(layers)-i.story].floor_area
+        i.N_Ly = layers[len(layers)-i.story].cum_weight * i.load_area / layers[len(layers)-i.story].floor_area
 

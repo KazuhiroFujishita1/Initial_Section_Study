@@ -40,21 +40,27 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
         elif temp < 300:
             column_W = 300
 
+        # 求めた必要梁成以上を満たす柱リストを選定
+        target_row = column_list[column_list['H'] >= column_W]
+
+            # 同じ梁せいのリストから最も小さいNoのものを取り出す
+        sorted_target_rows = target_row.sort_values(by='No', ascending=True)
+
         #算定柱せいに適合する柱の断面二次モーメントの出力
         target_row = column_list[column_list['H'] == column_W]
-        i.A = float(target_row['A'])
-        i.Ix = float(target_row['Ix'])
-        i.Iy = float(target_row['Iy'])
-        i.selected_section_no = float(target_row['No'])
+        i.A = float(list(sorted_target_rows['A'])[0])
+        i.Ix = float(list(sorted_target_rows['Ix'])[0])
+        i.Iy = float(list(sorted_target_rows['Iy'])[0])
+        i.selected_section_no = float(list(sorted_target_rows['No'])[0])
         #部材自重の算定
-        i.unit_weight = float(target_row["unit_m"]*9.80665/1000)
+        i.unit_weight = float(list(sorted_target_rows['unit_m'])[0])*9.80665/1000
         i.weight = i.unit_weight * i.length #部材自重
         #算定柱せいによる等価な基礎梁剛度の取得
-        i.base_K = float(target_row['base_K'])
-        i.H = float(target_row['H'])
-        i.t = float(target_row['t'])
-        i.Zp = float(target_row['Zp'])
-        i.F = float(target_row['F'])
+        i.base_K = float(list(sorted_target_rows['base_K'])[0])
+        i.H = float(list(sorted_target_rows['H'])[0])
+        i.t = float(list(sorted_target_rows['t'])[0])
+        i.Zp = float(list(sorted_target_rows['Zp'])[0])
+        i.F = float(list(sorted_target_rows['F'])[0])
 
     #長期軸力に関する軸力比のクライテリアから考えうる必要な柱断面積の算定
     column_area = [float(column_list['A'][i]) for i in range(len(column_list))]
@@ -204,7 +210,3 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
         i.node_member_stiff2_y = member_stiff_temp2_y
 
     return beam_groups,column_groups
-
-
-
-

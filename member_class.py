@@ -52,7 +52,7 @@ def read_model():
         #柱長さの算定
         column_length=calc_length(df3['i_point'][i],df3['j_point'][i],nodes)
 
-        column_data.append((df3['No.'][i],df3['i_point'][i],df3['j_point'][i],df3['story'][i],column_length))
+        column_data.append((df3['No.'][i],df3['i_point'][i],df3['j_point'][i],df3['story'][i],column_length,df3['load_area'][i]))
 
     columns = [Column(*data) for data in column_data]#柱インスタンスの作成
 
@@ -174,7 +174,7 @@ class Beam():
 
     # 柱のクラス
 class Column():
-    def __init__(self,column_no,column_i,column_j,column_story,column_length):
+    def __init__(self,column_no,column_i,column_j,column_story,column_length,load_area):
         self.no = column_no
         self.i = column_i
         self.j = column_j
@@ -191,6 +191,7 @@ class Column():
         self.stiff_ratio_y = []#stiff_ratio_y
         self.F = []#FF
         self.base_K = [] #柱せいより決まる等価な基礎梁剛度
+        self.load_area = load_area #柱の負担面積
 
         self.init_group = []#初期断面のグルーピング
 
