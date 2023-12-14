@@ -35,7 +35,7 @@ def read_model():
         dist_load = beam_load_i*12/beam_length**2
 
         #梁の方向判定
-        if nodes[df2['i_point'][i] - 1].x == nodes[df2['j_point'][i] - 1].x:
+        if round(nodes[df2['i_point'][i] - 1].x,1) == round(nodes[df2['j_point'][i] - 1].x,1):
             beam_direction="X"
         else:
             beam_direction="Y"
@@ -241,6 +241,9 @@ class Column():
         self.tc2x = []
         self.tc2y = []
         self.tc = []
+
+        self.temp_axial_column_x = []
+        self.temp_axial_column_y = []
 
     # 層のクラス
 class Layer():

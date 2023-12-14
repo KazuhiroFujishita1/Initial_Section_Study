@@ -30,6 +30,9 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
     #選定モードに準じた梁リストのみ読み込む
     selected_beam_list = beam_list[beam_list['category'].str.contains(beam_select_mode,case=False, na=False)]
 
+    #柱部材リストの断面積によるソート
+    sorted_A_column_list = column_list.sort_values(by='A', ascending=True)
+
     #経験式に基づく初期柱せいの算定(適用高さ上限45m）
     for i in columns:
         temp = math.ceil(((maximum_height+20) *10)/50)*50#鹿島様略算式
@@ -41,34 +44,34 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             column_W = 300
 
         # 求めた必要梁成以上を満たす柱リストを選定
-        target_row = column_list[column_list['H'] >= column_W]
+        target_row = sorted_A_column_list[sorted_A_column_list['H'] >= column_W]
 
             # 同じ梁せいのリストから最も小さいNoのものを取り出す
-        sorted_target_rows = target_row.sort_values(by='No', ascending=True)
+        #sorted_target_rows = target_row.sort_values(by='No', ascending=True)
 
         #算定柱せいに適合する柱の断面二次モーメントの出力
-        target_row = column_list[column_list['H'] == column_W]
-        i.A = float(list(sorted_target_rows['A'])[0])
-        i.Ix = float(list(sorted_target_rows['Ix'])[0])
-        i.Iy = float(list(sorted_target_rows['Iy'])[0])
-        i.selected_section_no = float(list(sorted_target_rows['No'])[0])
+        #target_row = sorted_A_column_list[sorted_A_column_list['H'] == column_W]
+        i.A = float(list(target_row['A'])[0])
+        i.Ix = float(list(target_row['Ix'])[0])
+        i.Iy = float(list(target_row['Iy'])[0])
+        i.selected_section_no = float(list(target_row['No'])[0])
         #部材自重の算定
-        i.unit_weight = float(list(sorted_target_rows['unit_m'])[0])*9.80665/1000
+        i.unit_weight = float(list(target_row['unit_m'])[0])*9.80665/1000
         i.weight = i.unit_weight * i.length #部材自重
         #算定柱せいによる等価な基礎梁剛度の取得
-        i.base_K = float(list(sorted_target_rows['base_K'])[0])
-        i.H = float(list(sorted_target_rows['H'])[0])
-        i.t = float(list(sorted_target_rows['t'])[0])
-        i.Zp = float(list(sorted_target_rows['Zp'])[0])
-        i.F = float(list(sorted_target_rows['F'])[0])
+        i.base_K = float(list(target_row['base_K'])[0])
+        i.H = float(list(target_row['H'])[0])
+        i.t = float(list(target_row['t'])[0])
+        i.Zp = float(list(target_row['Zp'])[0])
+        i.F = float(list(target_row['F'])[0])
 
     #長期軸力に関する軸力比のクライテリアから考えうる必要な柱断面積の算定
-    column_area = [float(column_list['A'][i]) for i in range(len(column_list))]
+    column_area = [float(sorted_A_column_list['A'][i]) for i in range(len(sorted_A_column_list))]
     column_KX =[];column_KY =[]
     for i in columns:
         i.required_area = i.N_Lx*1000/(0.4*i.F)#長期軸力比を0.4とする場合の必要断面積
         #柱リストより得られた各諸元以上のキャパシティを有する柱断面の選定
-        filtered_data = column_list[(column_list['A'] > i.required_area/1000000)]
+        filtered_data = sorted_A_column_list[(sorted_A_column_list['A'] > i.required_area/1000000)]
 
         #それぞれの選定断面を比較のうえ、こちらの方がリスト番号が大きい場合更新
         if i.selected_section_no-1 < list(filtered_data['No'])[0]:

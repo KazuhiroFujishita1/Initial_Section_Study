@@ -491,8 +491,9 @@ def D_method(nodes,layers,beams,columns,EE):
     #各柱の軸力算定（inputファイルにおいて柱リストは上の層のものから順に記載すること）
     temp_axial_column_x = []
     temp_axial_column_y = []
+
     for i in columns:
-        #各柱にとりつく梁のせん断力から想定される軸力を算定
+            #各柱にとりつく梁のせん断力から想定される軸力を算定
         if nodes[i.i-1].z > nodes[i.j-1].z:  # i端側がj端側よりも高い場合
             temp = nodes[i.i-1].beam_no_each_node_x#i端部材no
             temp2 = nodes[i.i-1].beam_no_each_node_y
@@ -502,41 +503,37 @@ def D_method(nodes,layers,beams,columns,EE):
 
         #梁のせん断力の差分が軸力となる
         if len(temp) == 1:
-            temp_axial_column_x.append(beams[temp[0]-1].Q_Sx)
+            i.temp_axial_column_x = beams[temp[0]-1].Q_Sx
         elif len(temp) == 2:
-            temp_axial_column_x.append(abs(beams[temp[0]-1].Q_Sx-beams[temp[1]-1].Q_Sx))
+            i.temp_axial_column_x = abs(beams[temp[0]-1].Q_Sx-beams[temp[1]-1].Q_Sx)
 
         if len(temp2) == 1:
-            temp_axial_column_y.append(beams[temp2[0]-1].Q_Sy)
+            i.temp_axial_column_y = beams[temp2[0]-1].Q_Sy
         elif len(temp2) == 2:
-            temp_axial_column_y.append(abs(beams[temp2[0]-1].Q_Sy-beams[temp2[1]-1].Q_Sy))
-    
-    for i in columns:
+            i.temp_axial_column_y = abs(beams[temp2[0]-1].Q_Sy-beams[temp2[1]-1].Q_Sy)
+
         #上に接続する柱の軸力を足す
-        if nodes[i.i-1].z > nodes[i.j-1].z:  # i端側がj端側よりも高い場合
-            temp = nodes[i.i-1].column_no_each_node_x#i端部材no
-            temp2 = nodes[i.i-1].column_no_each_node_y
-        else:
-            temp = nodes[i.j-1].column_no_each_node_x
-            temp2 = nodes[i.j-1].column_no_each_node_y#j端部材no
+    for k in range(len(layers)):
+        for i in columns:
+            if i.story == len(layers)-k:
+                if nodes[i.i-1].z > nodes[i.j-1].z:  # i端側がj端側よりも高い場合
+                    temp = nodes[i.i-1].column_no_each_node_x#i端部材no
+                    temp2 = nodes[i.i-1].column_no_each_node_y
+                else:
+                    temp = nodes[i.j-1].column_no_each_node_x
+                    temp2 = nodes[i.j-1].column_no_each_node_y#j端部材no
 
-        frag =0
-        for j in temp:
-            if j != i.no:#自分以外の柱がある場合その柱の軸力を足す
-                i.N_Sx = temp_axial_column_x[i.no-1]+temp_axial_column_x[j-1]
-                temp_axial_column_x[i.no-1]+=temp_axial_column_x[j-1]#temp自身も更新
-                frag = 1
-        if frag == 0:
-            i.N_Sx = temp_axial_column_x[i.no-1]
+                for j in temp:
+                    if j != i.no:#自分以外の柱がある場合その柱の軸力を足す
+                        i.N_Sx = columns[i.no-1].temp_axial_column_x+columns[j-1].temp_axial_column_x
+                    else:
+                        i.N_Sx = columns[i.no-1].temp_axial_column_x
 
-        frag = 0
-        for j in temp2:
-            if j != i.no:  # 自分以外の柱がある場合その柱の軸力を足す
-                i.N_Sy = temp_axial_column_y[i.no - 1] + temp_axial_column_y[j- 1]
-                temp_axial_column_y[i.no - 1] += temp_axial_column_y[j - 1]  # temp自身も更新
-                frag = 1
-        if frag == 0:
-            i.N_Sy = temp_axial_column_y[i.no - 1]
+                for j in temp2:
+                    if j != i.no:  # 自分以外の柱がある場合その柱の軸力を足す
+                        i.N_Sy = columns[i.no-1].temp_axial_column_y+ columns[j- 1].temp_axial_column_y
+                    else:
+                        i.N_Sy = columns[i.no-1].temp_axial_column_y
 
         #各層の水平変形の算定
     D_sum_x =np.zeros(len(layers))

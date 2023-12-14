@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
 #計算における定数の設定
     EE= 205000000 #鋼材のヤング係数
-    beam_select_mode = "cost" #梁リストの選定モード(cost or design)
+    beam_select_mode = "design" #梁リストの選定モード(cost or design)
 
 #データの読み込み
     nodes, beams, columns, layers, maximum_height = read_model()
