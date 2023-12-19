@@ -10,7 +10,7 @@ if __name__ == "__main__":
 
 #計算における定数の設定
     EE= 205000000 #鋼材のヤング係数
-    beam_select_mode = "design" #梁リストの選定モード(cost or design)
+    beam_select_mode = "cost" #梁リストの選定モード(cost or design)
 
 #データの読み込み
     nodes, beams, columns, layers, maximum_height = read_model()
@@ -35,7 +35,7 @@ if __name__ == "__main__":
     load_calc(beams,columns)
 
 #大梁断面の更新
-    update_beam_section(nodes,beams,beam_select_mode)
+    update_beam_section(nodes,beams,beam_select_mode,EE)
 
 #柱断面の更新
     update_column_section(nodes, beams, columns, layers, EE)

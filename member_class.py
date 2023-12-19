@@ -169,6 +169,8 @@ class Beam():
         self.delta_y = []
 
         self.selected_section_no = []
+        self.required_web_area = []
+        self.required_Z = []
 
         self.F = []#FF
 

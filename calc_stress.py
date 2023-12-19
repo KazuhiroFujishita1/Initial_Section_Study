@@ -186,8 +186,8 @@ def fixed_moment_method(nodes,beams,columns,EE):
     temp=0
     for i in beam_no_x:
         if beams[i-1].category != "BB":
-            beams[i-1].M_Lx0 = -beams[i-1].M0\
-                          -np.average([abs(beams[i-1].M_Lx[0]),abs(beams[i-1].M_Lx[1])])#固定端モーメントを考慮した梁中央の曲げモーメントM0
+            beams[i-1].M_Lx0 = beams[i-1].M0\
+                          -np.average([beams[i-1].M_Lx[0],beams[i-1].M_Lx[1]])#固定端モーメントを考慮した梁中央の曲げモーメントM0
             beams[i-1].delta_x = (5*beams[i-1].M_Lx0/(48*EE*beams[i-1].I)*beams[i-1].length**2
                               -sum(beams[i-1].M_Lx)/(16*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証）
             temp += 1
@@ -198,8 +198,8 @@ def fixed_moment_method(nodes,beams,columns,EE):
     temp=0
     for i in beam_no_y:
         if beams[i-1].category != "BB":
-            beams[i-1].M_Ly0 = -beams[i-1].M0\
-                          -np.average([abs(beams[i-1].M_Ly[0]),abs(beams[i-1].M_Ly[1])])#固定端モーメントを考慮した梁中央の曲げモーメントM0
+            beams[i-1].M_Ly0 = beams[i-1].M0\
+                          -np.average([beams[i-1].M_Ly[0],beams[i-1].M_Ly[1]])#固定端モーメントを考慮した梁中央の曲げモーメントM0
             beams[i-1].delta_y = (5*beams[i-1].M_Ly0/(48*EE*beams[i-1].I)*beams[i-1].length**2
                             -sum(beams[i-1].M_Ly)/(16*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証）
             temp += 1
@@ -365,7 +365,6 @@ def calc_D(nodes,columns,beams,layers,direction,D_sum):
             kk.append(kk_temp)
             a.append(kk_temp/(2+kk_temp))#一般階の場合
             D.append(i.stiff_ratio_x * kk_temp/(2+kk_temp))
-
 
         #alpha1の算定
             if nodes[i.i-1].z > nodes[i.j-1].z:#i端側がj端側よりも高い場合

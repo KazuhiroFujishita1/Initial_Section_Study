@@ -6,14 +6,15 @@ from member_class import *
 from set_initial_section import *
 
 #大梁断面を長期・短期応力評価結果に基づいて更新
-def update_beam_section(nodes,beams,beam_select_mode):
+def update_beam_section(nodes,beams,beam_select_mode,EE):
+    #準備計算
     #梁リストの読み込み
     beam_list = pd.read_csv("beam_list.csv", header=0)
 
     #選定モードに準じた梁リストのみ読み込む
     selected_beam_list = beam_list[beam_list['category'].str.contains(beam_select_mode,case=False, na=False)]
     sorted_Zp_beam_list = selected_beam_list.sort_values(by='Zp', ascending=True)#応力による断面更新に用いるリスト
-    sorted_A_beam_list = selected_beam_list.sort_values(by='A', ascending=True)
+    #sorted_A_beam_list = selected_beam_list.sort_values(by='A', ascending=True)
 
     #応力による断面選定
     #梁応力の算定
@@ -27,69 +28,131 @@ def update_beam_section(nodes,beams,beam_select_mode):
             f_b = i.F*1.1#取り合えずfb低減は考慮しない
             f_s = i.F*1.1/math.sqrt(3)
 
-            i.judge_b_L = sigma_b_L/(f_b/1.5)
-            i.judge_b_s = sigma_b_s/f_b
-            i.judge_s_L = tau_L/(f_s/1.5)
-            i.judge_s_s = tau_s/f_s
+    #検定比0.9を満たすために必要な梁の断面係数、ウェブ断面積の算定
+            i.required_web_area = max(i.QL*1000/(0.9*f_s/1.5),i.Qs*1000/(0.9*f_s))
+            i.required_Z = max(i.ML*1000000/(0.9*f_b/1.5),i.Ms*1000000/(0.9*f_b))
+
+    #必要な梁の断面係数、ウェブ断面積以上の部材をリストより選定
+            filtered_list = sorted_Zp_beam_list[(sorted_Zp_beam_list['Zp'] > i.required_Z/1000000000) &
+            (sorted_Zp_beam_list['H']*sorted_Zp_beam_list['t1'] > i.required_web_area/1000000)]
+    #さらに梁せいの制限で絞り込み（スパンの1/20以上）
+            filtered_list2 = filtered_list[(filtered_list['H']/1000 > i.length*1/20)]
+
+            i.selected_section_no = float(list(filtered_list2['No'])[0])
+            i.I = float(list(filtered_list2['Ix'])[0])  # 断面諸元の更新
+            i.H = float(list(filtered_list2['H'])[0])
+            i.B = float(list(filtered_list2['B'])[0])
+            i.t1 = float(list(filtered_list2['t1'])[0])
+            i.t2 = float(list(filtered_list2['t2'])[0])
+            i.Z = float(list(filtered_list2['Z'])[0])
+            i.Zp = float(list(filtered_list2['Zp'])[0])
+            i.F = float(list(filtered_list2['F'])[0])
+
+            # 大梁のたわみ算定に基づく断面更新(ダミーの基礎梁は除く）
+            temp_no=0
+            while True:
+                if i.direction == "X":
+                    i.M_Lx0 = i.M0 - np.average([i.M_Lx[0], i.M_Lx[1]])
+                    i.delta_x = (5 * i.M_Lx0 / (48 * EE * i.I) * i.length ** 2
+                                - sum(i.M_Lx) / (16 * EE * i.I) * i.length ** 2)  # 梁中央のたわみ（未検証）
+                # 大梁たわみが1/300以下であるか確認
+                    if abs(i.delta_x / i.length) >= 1 / 300:
+                    #NGの場合梁リストから一段上げて再確認
+                        temp_no += 1
+                        i.I = float(list(filtered_list2['Ix'])[temp_no])  # 断面諸元の更新
+                        i.H = float(list(filtered_list2['H'])[temp_no])
+                        i.B = float(list(filtered_list2['B'])[temp_no])
+                        i.t1 = float(list(filtered_list2['t1'])[temp_no])
+                        i.t2 = float(list(filtered_list2['t2'])[temp_no])
+                        i.Z = float(list(filtered_list2['Z'])[temp_no])
+                        i.Zp = float(list(filtered_list2['Zp'])[temp_no])
+                        i.F = float(list(filtered_list2['F'])[temp_no])
+                        print("Beam deflection is NG")
+                    else:
+                        break
+                else:
+                    i.M_Ly0 = i.M0 - np.average([i.M_Ly[0], i.M_Ly[1]])
+                    i.delta_y = (5 * i.M_Ly0 / (48 * EE * i.I) * i.length ** 2
+                                - sum(i.M_Ly) / (16 * EE * i.I) * i.length ** 2)  # 梁中央のたわみ（未検証）
+                # 大梁たわみが1/300以下であるか確認
+                    if abs(i.delta_y / i.length) >= 1 / 300:
+                    # NGの場合梁リストから一段上げて再確認
+                        temp_no += 1
+                        i.I = float(list(filtered_list2['Ix'])[temp_no])  # 断面諸元の更新
+                        i.H = float(list(filtered_list2['H'])[temp_no])
+                        i.B = float(list(filtered_list2['B'])[temp_no])
+                        i.t1 = float(list(filtered_list2['t1'])[temp_no])
+                        i.t2 = float(list(filtered_list2['t2'])[temp_no])
+                        i.Z = float(list(filtered_list2['Z'])[temp_no])
+                        i.Zp = float(list(filtered_list2['Zp'])[temp_no])
+                        i.F = float(list(filtered_list2['F'])[temp_no])
+                        print("Beam deflection is NG")
+                    else:
+                        break
+
+            #i.judge_b_L = sigma_b_L/(f_b/1.5)
+            #i.judge_b_s = sigma_b_s/f_b
+            #i.judge_s_L = tau_L/(f_s/1.5)
+            #i.judge_s_s = tau_s/f_s
 
     #曲げせん断検定比が0.9以上の場合、選定部材を1ランク上げる
-            if i.judge_b_L >= 0.9 or i.judge_b_s >= 0.9 or i.judge_s_L >= 0.9 or i.judge_s_s >= 0.9:
-                temp = i.selected_section_no + 1
+            #if i.judge_b_L >= 0.9 or i.judge_b_s >= 0.9 or i.judge_s_L >= 0.9 or i.judge_s_s >= 0.9:
+            #    temp = i.selected_section_no + 1
 
-                while True:
-                    if temp <= max(beam_list['No']):  # 1ランク上げたときに梁リストの上限を超えない場合
-                        if int(temp) in sorted_A_beam_list['No'].values:  # 対象の梁部材がリストに存在するとき
-                            target_row1 = sorted_A_beam_list[sorted_A_beam_list['No'] == temp]
-                            target_row2 = sorted_Zp_beam_list[sorted_A_beam_list['No'] == temp]
+            #    while True:
+            #        if temp <= max(beam_list['No']):  # 1ランク上げたときに梁リストの上限を超えない場合
+            #            if int(temp) in sorted_A_beam_list['No'].values:  # 対象の梁部材がリストに存在するとき
+            #                target_row1 = sorted_A_beam_list[sorted_A_beam_list['No'] == temp]
+            #                target_row2 = sorted_Zp_beam_list[sorted_A_beam_list['No'] == temp]
 
-                            if i.judge_b_L >= 0.9 or i.judge_b_s >= 0.9:#曲げが厳しい場合、選定リストの断面係数を確認
-                                if float(target_row2['Z'])/i.Z * float(target_row2['F'])/i.F > max(i.judge_b_L,i.judge_b_s)/0.9:#検定比を満たせる程度Zがあげられた場合断面更新(F値の違いの影響も考慮）
-                                    i.I = float(target_row2['Ix'])  # 断面諸元の更新
-                                    i.H = float(target_row2['H'])
-                                    i.B = float(target_row2['B'])
-                                    i.t1 = float(target_row2['t1'])
-                                    i.t2 = float(target_row2['t2'])
-                                    i.Z = float(target_row2['Z'])
-                                    i.Zp = float(target_row2['Zp'])
-                                    i.F = float(target_row2['F'])
-                                    break
-                            if i.judge_s_L >= 0.9 or i.judge_s_s >= 0.9:#せん断が厳しい場合、選定リストのウェブ断面積を確認
-                                if float(target_row1['H'])*float(target_row1['t1'])/i.H*i.t1 * float(target_row1['F'])/i.F > max(i.judge_s_L,i.judge_s_s)/0.9:#検定比を満たせる程度ウェブ断面積があげられた場合断面更新(F値の違いの影響も考慮）
-                                    i.I = float(target_row1['Ix'])  # 断面諸元の更新
-                                    i.H = float(target_row1['H'])
-                                    i.B = float(target_row1['B'])
-                                    i.t1 = float(target_row1['t1'])
-                                    i.t2 = float(target_row1['t2'])
-                                    i.Z = float(target_row1['Z'])
-                                    i.Zp = float(target_row1['Zp'])
-                                    i.F = float(target_row1['F'])
-                                    break
-                            if (i.judge_b_L >= 0.9 or i.judge_b_s >= 0.9) and (i.judge_s_L >= 0.9 or i.judge_s_s >= 0.9):
+            #                if i.judge_b_L >= 0.9 or i.judge_b_s >= 0.9:#曲げが厳しい場合、選定リストの断面係数を確認
+            #                    if float(target_row2['Z'])/i.Z * float(target_row2['F'])/i.F > max(i.judge_b_L,i.judge_b_s)/0.9:#検定比を満たせる程度Zがあげられた場合断面更新(F値の違いの影響も考慮）
+            #                        i.I = float(target_row2['Ix'])  # 断面諸元の更新
+            #                        i.H = float(target_row2['H'])
+            #                        i.B = float(target_row2['B'])
+            #                        i.t1 = float(target_row2['t1'])
+            #                        i.t2 = float(target_row2['t2'])
+            #                        i.Z = float(target_row2['Z'])
+            #                        i.Zp = float(target_row2['Zp'])
+            #                        i.F = float(target_row2['F'])
+            #                        break
+            #                if i.judge_s_L >= 0.9 or i.judge_s_s >= 0.9:#せん断が厳しい場合、選定リストのウェブ断面積を確認
+            #                    if float(target_row1['H'])*float(target_row1['t1'])/i.H*i.t1 * float(target_row1['F'])/i.F > max(i.judge_s_L,i.judge_s_s)/0.9:#検定比を満たせる程度ウェブ断面積があげられた場合断面更新(F値の違いの影響も考慮）
+            #                        i.I = float(target_row1['Ix'])  # 断面諸元の更新
+            #                        i.H = float(target_row1['H'])
+            #                        i.B = float(target_row1['B'])
+            #                        i.t1 = float(target_row1['t1'])
+            #                        i.t2 = float(target_row1['t2'])
+            #                        i.Z = float(target_row1['Z'])
+            #                        i.Zp = float(target_row1['Zp'])
+            #                        i.F = float(target_row1['F'])
+            #                        break
+            #                if (i.judge_b_L >= 0.9 or i.judge_b_s >= 0.9) and (i.judge_s_L >= 0.9 or i.judge_s_s >= 0.9):
                         #曲げとせん断がともに厳しい場合、選定リストのウェブ断面積を確認
-                                if (float(target_row2['Z'])/i.Z *float(target_row2['F'])/i.F > max(i.judge_b_L,i.judge_b_s)/0.9) and \
-                                (float(target_row2['H'])*float(target_row2['t1'])/i.H*i.t1 * float(target_row2['F'])/i.F >
-                                 max(i.judge_s_L,i.judge_s_s)/0.9):#検定比を満たせる程度断面係数、ウェブ断面積があげられた場合断面更新
-                                    i.I = float(target_row2['Ix'])  # 断面諸元の更新
-                                    i.H = float(target_row2['H'])
-                                    i.B = float(target_row2['B'])
-                                    i.t1 = float(target_row2['t1'])
-                                    i.t2 = float(target_row2['t2'])
-                                    i.Z = float(target_row2['Z'])
-                                    i.Zp = float(target_row2['Zp'])
-                                    i.F = float(target_row2['F'])
-                                    break
-                    else:# 1ランク上げたときに梁リストの上限を超える場合
-                        print("requirement value is over upper limit of beam_list.")
-                        i.I = "Error"  # 断面諸元の更新
-                        i.H = "Error"
-                        i.B = "Error"
-                        i.t1 = "Error"
-                        i.t2 = "Error"
-                        i.Z = "Error"
-                        i.Zp = "Error"
-                        i.F = "Error"
-                        break
-                    temp += 1
+            #                    if (float(target_row2['Z'])/i.Z *float(target_row2['F'])/i.F > max(i.judge_b_L,i.judge_b_s)/0.9) and \
+            #                    (float(target_row2['H'])*float(target_row2['t1'])/i.H*i.t1 * float(target_row2['F'])/i.F >
+            #                     max(i.judge_s_L,i.judge_s_s)/0.9):#検定比を満たせる程度断面係数、ウェブ断面積があげられた場合断面更新
+            #                        i.I = float(target_row2['Ix'])  # 断面諸元の更新
+            #                        i.H = float(target_row2['H'])
+            #                        i.B = float(target_row2['B'])
+            #                        i.t1 = float(target_row2['t1'])
+            #                        i.t2 = float(target_row2['t2'])
+            #                        i.Z = float(target_row2['Z'])
+            #                        i.Zp = float(target_row2['Zp'])
+            #                        i.F = float(target_row2['F'])
+            #                        break
+            #        else:# 1ランク上げたときに梁リストの上限を超える場合
+            #            print("requirement value is over upper limit of beam_list.")
+            #            i.I = "Error"  # 断面諸元の更新
+            #            i.H = "Error"
+            #            i.B = "Error"
+            #            i.t1 = "Error"
+            #            i.t2 = "Error"
+            #            i.Z = "Error"
+            #            i.Zp = "Error"
+            #            i.F = "Error"
+            #            break
+            #        temp += 1
 
     #応力に基づく梁断面更新後の梁断面の再グルーピング
     temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
@@ -463,35 +526,37 @@ def calc_column_thickness(columns):
             i.tc2y = (0.75*i.MSy*10**6/i.H**2/i.F+i.NL*1000/(4*i.H)/(i.F*0.9))*1.1
             i.tc = max(i.tc1,i.tc2x,i.tc2y)
 
-    # #必要板厚に基づく板厚の更新
-    #         i.t  = math.ceil(i.tc)#小数第一位で切り上げ
-    #
-    # #断面諸元の再計算（更新した板厚で実施）
-    #         i.A = ((i.H)**2 - (i.H-i.t*2)**2)/1000000
-    #         i.Ix = (((i.H)**4-(i.H-i.t*2)**4)/12)/10**12
-    #         i.Iy = ((i.H)**4-(i.H-i.t*2)**4)/12/10**12
-    #         i.Z = ((i.H)**4-(i.H-i.t*2)**4)/(6*i.H)/10**9
-
     #柱リストより得られた板厚以上のキャパシティを有する柱断面の選定
             filtered_data = column_list[(column_list['t'] > i.tc) & (column_list['H'] == i.H)]
-            i.minimum_selected_section_no = list(filtered_data['No'])[0]
+            if len(filtered_data) != 0:#柱リストの中に必要板厚以上のものがある場合リストから選定
+                i.minimum_selected_section_no = list(filtered_data['No'])[0]
 
-    #得られた最低柱断面諸元に更新
-            target_row = column_list[column_list['No'] == i.minimum_selected_section_no]
+                # 得られた最低柱断面諸元に更新
+                target_row = column_list[column_list['No'] == i.minimum_selected_section_no]
 
-            i.A = float(target_row['A'])
-            i.t = float(target_row['t'])
-            i.Ix = float(target_row['Ix'])
-            i.Iy = float(target_row['Iy'])
-            i.selected_section_no = float(target_row['No'])
-        #部材自重の算定
-            i.unit_weight = float(target_row["unit_m"]*9.80665/1000)
-            i.weight = i.unit_weight * i.length #部材自重
-        #算定柱せいによる等価な基礎梁剛度の取得
-            i.base_K = float(target_row['base_K'])
-            i.H = float(target_row['H'])
-            i.Zp = float(target_row['Zp'])
-            i.F = float(target_row['F'])
+                i.A = float(target_row['A'])
+                i.t = float(target_row['t'])
+                i.Ix = float(target_row['Ix'])
+                i.Iy = float(target_row['Iy'])
+                i.selected_section_no = float(target_row['No'])
+                # 部材自重の算定
+                i.unit_weight = float(target_row["unit_m"] * 9.80665 / 1000)
+                i.weight = i.unit_weight * i.length  # 部材自重
+                # 算定柱せいによる等価な基礎梁剛度の取得
+                i.base_K = float(target_row['base_K'])
+                i.H = float(target_row['H'])
+                i.Zp = float(target_row['Zp'])
+                i.F = float(target_row['F'])
+
+            else:#柱リストの中に必要板厚以上のものがない場合
+             #必要板厚に基づく板厚の更新
+                i.t  = math.ceil(i.tc)#小数第一位で切り上げ
+            #
+            # #断面諸元の再計算（更新した板厚で実施）
+                i.A = ((i.H)**2 - (i.H-i.t*2)**2)/1000000
+                i.Ix = (((i.H)**4-(i.H-i.t*2)**4)/12)/10**12
+                i.Iy = ((i.H)**4-(i.H-i.t*2)**4)/12/10**12
+                i.Z = ((i.H)**4-(i.H-i.t*2)**4)/(6*i.H)/10**9
 
 #柱断面を長期・短期応力評価結果に基づいて更新
 def update_column_section(nodes,beams,columns,layers,EE):
