@@ -61,7 +61,7 @@ def read_model():
     #df4 = pd.read_excel("input_model.xlsx", sheet_name="Story_shear", header=0)
     layer_data = []; maximum_height =0
     for i in range(len(df4)):
-        layer_data.append((df4['Story'][i],df4['Story_height'][i],df4['omega_1'][i],df4['omega_2'][i],df4['floor_area'][i]))
+        layer_data.append((df4['Story'][i],df4['Story_height'][i],df4['omega_1'][i],df4['omega_2'][i],df4['floor_area'][i],df4['outerwall_length'][i]))
         maximum_height += df4['Story_height'][i]
     layers = [Layer(*data) for data in layer_data]#層インスタンスの作成
 
@@ -249,7 +249,7 @@ class Column():
 
     # 層のクラス
 class Layer():
-    def __init__(self,story,height,omega_1,omega_2,floor_area):
+    def __init__(self,story,height,omega_1,omega_2,floor_area,outwalllength):
         self.story = story
         self.height = height
         self.shear_force_x = []#shear_force_x
@@ -257,6 +257,7 @@ class Layer():
         self.omega1 = omega_1
         self.omega2 = omega_2
         self.floor_area = floor_area
+        self.outerwall_length = outwalllength
 
         self.weight = []
         self.cum_weight = []
