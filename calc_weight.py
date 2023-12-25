@@ -26,9 +26,9 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
     temp = 0
     for i in range(len(layers)):
         if i == 0:
-            layers[i].weight = layers[i].omega1 * layers[i].floor_area + layers[i].omega2 * layers[i].height/2 * layers[i].outerwall_length#最上階
+            layers[i].weight = layers[i].omega1_seismic * layers[i].floor_area + layers[i].omega2_seismic * layers[i].height/2 * layers[i].outerwall_length#最上階
         else:
-            layers[i].weight = layers[i].omega1 * layers[i].floor_area + layers[i].omega2 * \
+            layers[i].weight = layers[i].omega1_seismic * layers[i].floor_area + layers[i].omega2_seismic * \
                                (layers[i].height+layers[i-1].height)/2 * layers[i].outerwall_length
         temp += layers[i].weight #上から層重量を足す
         layers[i].cum_weight = temp
