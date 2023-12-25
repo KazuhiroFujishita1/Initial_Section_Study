@@ -20,7 +20,7 @@ def output_section_data(columns,beams,beam_select_mode):
                              i.NL,i.NSx,i.NSy,i.MLx,i.MLy,i.MSx,i.MSy,i.QLx,i.QLy,i.QSx,i.QSy])
 
 #全データの出力
-def output_whole_data(columns,beams,beam_select_mode):
+def output_whole_data(columns,beams,beam_select_mode,nodes):
     #csvファイル名
     output_file = 'output_whole_data'
 
@@ -41,9 +41,22 @@ def output_whole_data(columns,beams,beam_select_mode):
         writer.writerow(['No','i','j','story','length','A','Ix','Iy','Z','Zp','H','t','stiff_ratio_x','stiff_ratio_y','F',
                          'base_K','load_area','init_group','Mpx','Mpy','unit_weight','weight','D_x','D_y','M_Lx','M_Ly',
                          'M_Sx','M_Sy','Q_Lx','Q_Ly','Q_Sx','Q_Sy','N_Lx','N_Ly','N_Sx','N_Sy','MLx','MLy','QLx','QLy',
-                         'NL','MSx','MSy','QSx','QSy','NSx','NSy'])
+                         'NL','MSx','MSy','QSx','QSy','NSx','NSy','required_area','decrement_ratio_x','decrement_ratio_y',
+                         'minimum_selected_section_no','tc1','tc2x','tc2y','tc'])
         for i in columns:
             writer.writerow([i.no,i.i,i.j,i.story,i.length,i.A,i.Ix,i.Iy,i.Z,i.Zp,i.H,i.t,i.stiff_ratio_x,i.stiff_ratio_y,
                              i.F,i.base_K,i.load_area,i.init_group,i.Mpx,i.Mpy,i.unit_weight,i.weight,i.D_x,i.D_y,i.M_Lx,i.M_Ly,
                              i.M_Sx,i.M_Sy,i.Q_Lx,i.Q_Ly,i.Q_Sx,i.Q_Sy,i.N_Lx,i.N_Ly,i.N_Sx,i.N_Sy,i.MLx,i.MLy,i.QLx,i.QLy,i.NL,
-                             i.MSx,i.MSy,i.QSx,i.QSy,i.NSx,i.NSy])
+                             i.MSx,i.MSy,i.QSx,i.QSy,i.NSx,i.NSy,i.required_area,i.decrement_ratio_x,i.decrement_ratio_y,
+                             i.minimum_selected_section_no,i.tc1,i.tc2x,i.tc2y,i.tc])
+        writer.writerow(['<node_data>'])
+        writer.writerow(
+            ['no','x','y','z','beam_no_each_node_x','column_no_each_node_x','column_no_each_node_y','member_no_each_node_x',
+             'beam_no_each_node2_x','member_no_each_node2_x','beam_no_each_node_y','beam_no_each_node2_y','member_no_each_node_y',
+             'member_no_each_noe2_y','node_member_stiff_x','node_member_stiff_y','node_member_stiff2_x','node_member_stiff2_y',
+             'req_Mpx','req_Mpy'])
+        for i in nodes:
+            writer.writerow([i.no, i.x, i.y, i.z, i.beam_no_each_node_x, i.column_no_each_node_x, i.column_no_each_node_y, i.member_no_each_node_x,
+                             i.beam_no_each_node2_x, i.member_no_each_node2_x, i.beam_no_each_node_y, i.beam_no_each_node2_y, i.member_no_each_node_y,
+            i.member_no_each_node2_y, i.node_member_stiff_x, i.node_member_stiff_y, i.node_member_stiff2_x, i.node_member_stiff2_y,
+                             i.req_Mpx,i.req_Mpy])

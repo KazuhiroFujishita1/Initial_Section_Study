@@ -13,7 +13,8 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
 
     #選定モードに準じた梁リストのみ読み込む
     selected_beam_list = beam_list[beam_list['category'].str.contains(beam_select_mode,case=False, na=False)]
-    sorted_Zp_beam_list = selected_beam_list.sort_values(by='Zp', ascending=True)#応力による断面更新に用いるリスト
+    sorted_H_beam_list = selected_beam_list.sort_values(by='H', ascending=True)#応力による断面更新に用いるリスト
+    sorted_Z_beam_list = selected_beam_list.sort_values(by='Z', ascending=True)#応力による断面更新に用いるリスト
     #sorted_A_beam_list = selected_beam_list.sort_values(by='A', ascending=True)
 
     #応力による断面選定
@@ -33,12 +34,15 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
             i.required_Z = max(i.ML*1000000/(0.9*f_b/1.5),i.Ms*1000000/(0.9*f_b))
 
     #必要な梁の断面係数、ウェブ断面積以上の部材をリストより選定
-            filtered_list = sorted_Zp_beam_list[(sorted_Zp_beam_list['Zp'] > i.required_Z/1000000000) &
-            (sorted_Zp_beam_list['H']*sorted_Zp_beam_list['t1'] > i.required_web_area/1000000)]
+            filtered_list = sorted_H_beam_list[(sorted_H_beam_list['Zp'] * sorted_H_beam_list['F']/i.F > i.required_Z/1000000000) &
+            (sorted_H_beam_list['H']*sorted_H_beam_list['t1'] * sorted_H_beam_list['F']/i.F > i.required_web_area/1000000)]
     #さらに梁せいの制限で絞り込み（スパンの1/20以上）
             filtered_list2 = filtered_list[(filtered_list['H']/1000 > i.length*1/20)]
 
             i.selected_section_no = float(list(filtered_list2['No'])[0])
+            print(i.no,i.required_web_area,i.required_Z,i.ML,i.Ms)
+            print(filtered_list)
+            print(i.selected_section_no)
             i.I = float(list(filtered_list2['Ix'])[0])  # 断面諸元の更新
             i.H = float(list(filtered_list2['H'])[0])
             i.B = float(list(filtered_list2['B'])[0])
@@ -161,176 +165,176 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
     group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
     beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
-    #各梁グループが隣接する梁を調べる
-    for i in beam_groups:
-        temp3=[]
-        for j in i.ID:#そのグループに属する梁の隣接する梁の洗い出し
-            temp3.extend(nodes[beams[j-1].i-1].beam_no_each_node2_x+
-                                 nodes[beams[j-1].i-1].beam_no_each_node2_y+
-                                 nodes[beams[j-1].j-1].beam_no_each_node2_x+
-                                 nodes[beams[j-1].j-1].beam_no_each_node2_y)
-            temp3.remove(j)#自分自身を除く
-            temp3.remove(j)
-        i.neighbor_beam = list(set(temp3))
-
-    #各梁グループが隣接する梁のグループを調べる
-        temp4= [] ;temp5 = []
-        for j in i.neighbor_beam:
-            for k in beam_groups:
-                if j in k.ID:
-                    temp4.append(k.group_name)
-                    temp5.append(k.no)
-        temp4 = set(temp4)
-        temp5 = set(temp5)
-        i.neighbor_group = temp4
-        i.neighbor_group_no = temp5
-
-    #各梁グループについて、隣接する梁のグル―プのせいとの関係性を調べる（大きい差の調整）
-    for i in beam_groups:
-        test_H = beams[i.ID[0]-1].H#グループに属する梁のせい
-        for j in i.neighbor_group_no:
-            neighbor_H = beams[beam_groups[j-1].ID[0]-1].H#隣接する梁グループに属する梁のせい
-            # 梁高さの差が100mm～200mmの場合、大きい方の梁成を上げる
-            if (abs(float(test_H) - float(neighbor_H)) > 100) \
-                    and (abs(float(test_H) - float(neighbor_H)) <= 200):
-                # 算定梁せいに適合する梁の選定
-                if test_H >= neighbor_H:#元のグループの梁せいの方が大きい場合、そちらを上げる
-                    temp = beams[i.ID[0]-1].selected_section_no + 1
-
-                    while True:
-                        if temp <= max(beam_list['No']):  # 1ランク上げたときに梁リストの上限を超えない場合
-                            if int(temp) in selected_beam_list['No'].values:  # 対象の梁部材がリストに存在するとき
-                                # 選んだ梁成の差が200以上ある場合、断面更新
-                                if list(selected_beam_list[selected_beam_list['No'] == int(temp)]['H'])[0] - neighbor_H > 200:
-                                    target_row = selected_beam_list[selected_beam_list['No'] == temp]
-                                    for k in i.ID:
-                                        beams[k - 1].selected_section_no = float(target_row['No'])
-                                        beams[k - 1].I = float(target_row['Ix'])
-                                        beams[k - 1].H = float(target_row['H'])
-                                        beams[k - 1].B = float(target_row['B'])
-                                        beams[k - 1].t1 = float(target_row['t1'])
-                                        beams[k - 1].t2 = float(target_row['t2'])
-                                        beams[k - 1].Z = float(target_row['Z'])
-                                        beams[k - 1].Zp = float(target_row['Zp'])
-                                        beams[k - 1].F = float(target_row['F'])
-                        else:  # 1ランク上げたときに梁リストの上限を超える場合
-                            print("requirement value is over upper limit of beam_list.")
-                            for k in i.ID:
-                                beams[k - 1].I = "Error"
-                                beams[k - 1].H = "Error"
-                                beams[k - 1].B = "Error"
-                                beams[k - 1].t1 = "Error"
-                                beams[k - 1].t2 = "Error"
-                                beams[k - 1].Z = "Error"
-                                beams[k - 1].Zp = "Error"
-                                beams[k - 1].F = "Error"
-                        temp += 1
-                else:
-                    temp = beams[beam_groups[j-1].ID[0]-1].selected_section_no + 1
-                    while True:
-                        if temp <= max(beam_list['No']):  # 1ランク上げたときに梁リストの上限を超えない場合
-                            if int(temp) in selected_beam_list['No'].values:#対象の梁部材がリストに存在するとき
-                        # 選んだ梁成の差が200以上ある場合、断面更新
-                                if list(selected_beam_list[selected_beam_list['No'] == temp]['H'])[0] - test_H > 200:
-                                    target_row = selected_beam_list[selected_beam_list['No'] == temp]
-                                    for k in beam_groups[j-1].ID:
-                                        beams[k-1].selected_section_no = float(target_row['No'])
-                                        beams[k-1].I =float(target_row['Ix'])
-                                        beams[k-1].H =float(target_row['H'])
-                                        beams[k - 1].B = float(target_row['B'])
-                                        beams[k-1].t1 = float(target_row['t1'])
-                                        beams[k-1].t2 = float(target_row['t2'])
-                                        beams[k-1].Z = float(target_row['Z'])
-                                        beams[k-1].Zp = float(target_row['Zp'])
-                                        beams[k-1].F = float(target_row['F'])
-                                    break
-                        else:  # 1ランク上げたときに梁リストの上限を超える場合
-                            print("requirement value is over upper limit of beam_list.")
-                            for k in beam_groups[j-1].ID:
-                                beams[k - 1].I = "Error"
-                                beams[k - 1].H = "Error"
-                                beams[k - 1].B = "Error"
-                                beams[k - 1].t1 = "Error"
-                                beams[k - 1].t2 = "Error"
-                                beams[k - 1].Z = "Error"
-                                beams[k - 1].Zp = "Error"
-                                beams[k - 1].F = "Error"
-                            frag =1
-                            break
-                        temp += 1
-
-    #梁断面の再グルーピング
-    temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
-          for i in range(len(beams))]
-    table_columns = ["No","H","B","story"]
-    group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
-    beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
-
-    #各梁グループが隣接する梁を調べる
-    for i in beam_groups:
-        temp3=[]
-        for j in i.ID:#そのグループに属する梁の隣接する梁の洗い出し
-            temp3.extend(nodes[beams[j-1].i-1].beam_no_each_node2_x+
-                                 nodes[beams[j-1].i-1].beam_no_each_node2_y+
-                                 nodes[beams[j-1].j-1].beam_no_each_node2_x+
-                                 nodes[beams[j-1].j-1].beam_no_each_node2_y)
-            temp3.remove(j)#自分自身を除く
-            temp3.remove(j)
-        i.neighbor_beam = list(set(temp3))
-
-    #各梁グループが隣接する梁のグループを調べる
-        temp4= [] ;temp5 = []
-        for j in i.neighbor_beam:
-            for k in beam_groups:
-                if j in k.ID:
-                    temp4.append(k.group_name)
-                    temp5.append(k.no)
-        temp4 = set(temp4)
-        temp5 = set(temp5)
-        i.neighbor_group = temp4
-        i.neighbor_group_no = temp5
-
-    #各梁グループについて、隣接する梁のグループのせいとの関係性を調べる（小さい差の調整）
-    for i in beam_groups:
-        test_H = beams[i.ID[0]-1].H#グループに属する梁のせい
-        for j in i.neighbor_group_no:
-            neighbor_H = beams[beam_groups[j-1].ID[0]-1].H#隣接する梁グループに属する梁のせい
-            # 梁高さの差が100mm以内の場合なら小さい方の梁せいを合わせにいく
-            if abs(float(test_H) - float(neighbor_H)) > 5 \
-                    and abs(float(test_H) - float(neighbor_H)) <= 100:
-            # 算定梁せいに適合する梁の選定
-                if float(test_H) >= float(neighbor_H):
-                    filtered_beam_list = sorted_Zp_beam_list[(sorted_Zp_beam_list['H'] == test_H) & (sorted_Zp_beam_list['Zp'] >= beams[i.ID[0]-1].Zp) ]
-                    for k in beam_groups[j-1].ID:
-                        beams[k-1].I = float(list(filtered_beam_list['Ix'])[0])
-                        beams[k - 1].selected_section_no = float(list(filtered_beam_list['No'])[0])
-                        beams[k - 1].H = float(list(filtered_beam_list['H'])[0])
-                        beams[k - 1].B = float(list(filtered_beam_list['B'])[0])
-                        beams[k - 1].t1 = float(list(filtered_beam_list['t1'])[0])
-                        beams[k - 1].t2 = float(list(filtered_beam_list['t2'])[0])
-                        beams[k - 1].Z = float(list(filtered_beam_list['Z'])[0])
-                        beams[k - 1].Zp = float(list(filtered_beam_list['Zp'])[0])
-                        beams[k - 1].F = float(list(filtered_beam_list['F'])[0])
-
-                else:
-                    filtered_beam_list = sorted_Zp_beam_list[(sorted_Zp_beam_list['H'] == neighbor_H) & (sorted_Zp_beam_list['Zp'] >= beams[beam_groups[j-1].ID[0]-1].Zp) ]
-                    for k in i.ID:
-                        beams[k - 1].I = float(list(filtered_beam_list['Ix'])[0])
-                        beams[k - 1].selected_section_no = float(list(filtered_beam_list['No'])[0])
-                        beams[k - 1].H = float(list(filtered_beam_list['H'])[0])
-                        beams[k - 1].B = float(list(filtered_beam_list['B'])[0])
-                        beams[k - 1].t1 = float(list(filtered_beam_list['t1'])[0])
-                        beams[k - 1].t2 = float(list(filtered_beam_list['t2'])[0])
-                        beams[k - 1].Z = float(list(filtered_beam_list['Z'])[0])
-                        beams[k - 1].Zp = float(list(filtered_beam_list['Zp'])[0])
-                        beams[k - 1].F = float(list(filtered_beam_list['F'])[0])
-
-    #梁断面の再グルーピング
-    temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
-          for i in range(len(beams))]
-    table_columns = ["No","H","B","story"]
-    group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
-    beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
+    # #各梁グループが隣接する梁を調べる
+    # for i in beam_groups:
+    #     temp3=[]
+    #     for j in i.ID:#そのグループに属する梁の隣接する梁の洗い出し
+    #         temp3.extend(nodes[beams[j-1].i-1].beam_no_each_node2_x+
+    #                              nodes[beams[j-1].i-1].beam_no_each_node2_y+
+    #                              nodes[beams[j-1].j-1].beam_no_each_node2_x+
+    #                              nodes[beams[j-1].j-1].beam_no_each_node2_y)
+    #         temp3.remove(j)#自分自身を除く
+    #         temp3.remove(j)
+    #     i.neighbor_beam = list(set(temp3))
+    #
+    # #各梁グループが隣接する梁のグループを調べる
+    #     temp4= [] ;temp5 = []
+    #     for j in i.neighbor_beam:
+    #         for k in beam_groups:
+    #             if j in k.ID:
+    #                 temp4.append(k.group_name)
+    #                 temp5.append(k.no)
+    #     temp4 = set(temp4)
+    #     temp5 = set(temp5)
+    #     i.neighbor_group = temp4
+    #     i.neighbor_group_no = temp5
+    #
+    # #各梁グループについて、隣接する梁のグル―プのせいとの関係性を調べる（大きい差の調整）
+    # for i in beam_groups:
+    #     test_H = beams[i.ID[0]-1].H#グループに属する梁のせい
+    #     for j in i.neighbor_group_no:
+    #         neighbor_H = beams[beam_groups[j-1].ID[0]-1].H#隣接する梁グループに属する梁のせい
+    #         # 梁高さの差が100mm～200mmの場合、大きい方の梁成を上げる
+    #         if (abs(float(test_H) - float(neighbor_H)) > 100) \
+    #                 and (abs(float(test_H) - float(neighbor_H)) <= 200):
+    #             # 算定梁せいに適合する梁の選定
+    #             if test_H >= neighbor_H:#元のグループの梁せいの方が大きい場合、そちらを上げる
+    #                 temp = beams[i.ID[0]-1].selected_section_no + 1
+    #
+    #                 while True:
+    #                     if temp <= max(beam_list['No']):  # 1ランク上げたときに梁リストの上限を超えない場合
+    #                         if int(temp) in selected_beam_list['No'].values:  # 対象の梁部材がリストに存在するとき
+    #                             # 選んだ梁成の差が200以上ある場合、断面更新
+    #                             if list(selected_beam_list[selected_beam_list['No'] == int(temp)]['H'])[0] - neighbor_H > 200:
+    #                                 target_row = selected_beam_list[selected_beam_list['No'] == temp]
+    #                                 for k in i.ID:
+    #                                     beams[k - 1].selected_section_no = float(target_row['No'])
+    #                                     beams[k - 1].I = float(target_row['Ix'])
+    #                                     beams[k - 1].H = float(target_row['H'])
+    #                                     beams[k - 1].B = float(target_row['B'])
+    #                                     beams[k - 1].t1 = float(target_row['t1'])
+    #                                     beams[k - 1].t2 = float(target_row['t2'])
+    #                                     beams[k - 1].Z = float(target_row['Z'])
+    #                                     beams[k - 1].Zp = float(target_row['Zp'])
+    #                                     beams[k - 1].F = float(target_row['F'])
+    #                     else:  # 1ランク上げたときに梁リストの上限を超える場合
+    #                         print("requirement value is over upper limit of beam_list.")
+    #                         for k in i.ID:
+    #                             beams[k - 1].I = "Error"
+    #                             beams[k - 1].H = "Error"
+    #                             beams[k - 1].B = "Error"
+    #                             beams[k - 1].t1 = "Error"
+    #                             beams[k - 1].t2 = "Error"
+    #                             beams[k - 1].Z = "Error"
+    #                             beams[k - 1].Zp = "Error"
+    #                             beams[k - 1].F = "Error"
+    #                     temp += 1
+    #             else:
+    #                 temp = beams[beam_groups[j-1].ID[0]-1].selected_section_no + 1
+    #                 while True:
+    #                     if temp <= max(beam_list['No']):  # 1ランク上げたときに梁リストの上限を超えない場合
+    #                         if int(temp) in selected_beam_list['No'].values:#対象の梁部材がリストに存在するとき
+    #                     # 選んだ梁成の差が200以上ある場合、断面更新
+    #                             if list(selected_beam_list[selected_beam_list['No'] == temp]['H'])[0] - test_H > 200:
+    #                                 target_row = selected_beam_list[selected_beam_list['No'] == temp]
+    #                                 for k in beam_groups[j-1].ID:
+    #                                     beams[k-1].selected_section_no = float(target_row['No'])
+    #                                     beams[k-1].I =float(target_row['Ix'])
+    #                                     beams[k-1].H =float(target_row['H'])
+    #                                     beams[k - 1].B = float(target_row['B'])
+    #                                     beams[k-1].t1 = float(target_row['t1'])
+    #                                     beams[k-1].t2 = float(target_row['t2'])
+    #                                     beams[k-1].Z = float(target_row['Z'])
+    #                                     beams[k-1].Zp = float(target_row['Zp'])
+    #                                     beams[k-1].F = float(target_row['F'])
+    #                                 break
+    #                     else:  # 1ランク上げたときに梁リストの上限を超える場合
+    #                         print("requirement value is over upper limit of beam_list.")
+    #                         for k in beam_groups[j-1].ID:
+    #                             beams[k - 1].I = "Error"
+    #                             beams[k - 1].H = "Error"
+    #                             beams[k - 1].B = "Error"
+    #                             beams[k - 1].t1 = "Error"
+    #                             beams[k - 1].t2 = "Error"
+    #                             beams[k - 1].Z = "Error"
+    #                             beams[k - 1].Zp = "Error"
+    #                             beams[k - 1].F = "Error"
+    #                         frag =1
+    #                         break
+    #                     temp += 1
+    #
+    # #梁断面の再グルーピング
+    # temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
+    #       for i in range(len(beams))]
+    # table_columns = ["No","H","B","story"]
+    # group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
+    # beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
+    #
+    # #各梁グループが隣接する梁を調べる
+    # for i in beam_groups:
+    #     temp3=[]
+    #     for j in i.ID:#そのグループに属する梁の隣接する梁の洗い出し
+    #         temp3.extend(nodes[beams[j-1].i-1].beam_no_each_node2_x+
+    #                              nodes[beams[j-1].i-1].beam_no_each_node2_y+
+    #                              nodes[beams[j-1].j-1].beam_no_each_node2_x+
+    #                              nodes[beams[j-1].j-1].beam_no_each_node2_y)
+    #         temp3.remove(j)#自分自身を除く
+    #         temp3.remove(j)
+    #     i.neighbor_beam = list(set(temp3))
+    #
+    # #各梁グループが隣接する梁のグループを調べる
+    #     temp4= [] ;temp5 = []
+    #     for j in i.neighbor_beam:
+    #         for k in beam_groups:
+    #             if j in k.ID:
+    #                 temp4.append(k.group_name)
+    #                 temp5.append(k.no)
+    #     temp4 = set(temp4)
+    #     temp5 = set(temp5)
+    #     i.neighbor_group = temp4
+    #     i.neighbor_group_no = temp5
+    #
+    # #各梁グループについて、隣接する梁のグループのせいとの関係性を調べる（小さい差の調整）
+    # for i in beam_groups:
+    #     test_H = beams[i.ID[0]-1].H#グループに属する梁のせい
+    #     for j in i.neighbor_group_no:
+    #         neighbor_H = beams[beam_groups[j-1].ID[0]-1].H#隣接する梁グループに属する梁のせい
+    #         # 梁高さの差が100mm以内の場合なら小さい方の梁せいを合わせにいく(588と600の隣接はOK）
+    #         if abs(float(test_H) - float(neighbor_H)) > 12 \
+    #                 and abs(float(test_H) - float(neighbor_H)) <= 100:
+    #         # 算定梁せいに適合する梁の選定
+    #             if float(test_H) >= float(neighbor_H):
+    #                 filtered_beam_list = sorted_H_beam_list[(sorted_H_beam_list['H'] == test_H) & (sorted_H_beam_list['Zp'] >= beams[i.ID[0]-1].Zp) ]
+    #                 for k in beam_groups[j-1].ID:
+    #                     beams[k-1].I = float(list(filtered_beam_list['Ix'])[0])
+    #                     beams[k - 1].selected_section_no = float(list(filtered_beam_list['No'])[0])
+    #                     beams[k - 1].H = float(list(filtered_beam_list['H'])[0])
+    #                     beams[k - 1].B = float(list(filtered_beam_list['B'])[0])
+    #                     beams[k - 1].t1 = float(list(filtered_beam_list['t1'])[0])
+    #                     beams[k - 1].t2 = float(list(filtered_beam_list['t2'])[0])
+    #                     beams[k - 1].Z = float(list(filtered_beam_list['Z'])[0])
+    #                     beams[k - 1].Zp = float(list(filtered_beam_list['Zp'])[0])
+    #                     beams[k - 1].F = float(list(filtered_beam_list['F'])[0])
+    #
+    #             else:
+    #                 filtered_beam_list = sorted_H_beam_list[(sorted_H_beam_list['H'] == neighbor_H) & (sorted_H_beam_list['Zp'] >= beams[beam_groups[j-1].ID[0]-1].Zp) ]
+    #                 for k in i.ID:
+    #                     beams[k - 1].I = float(list(filtered_beam_list['Ix'])[0])
+    #                     beams[k - 1].selected_section_no = float(list(filtered_beam_list['No'])[0])
+    #                     beams[k - 1].H = float(list(filtered_beam_list['H'])[0])
+    #                     beams[k - 1].B = float(list(filtered_beam_list['B'])[0])
+    #                     beams[k - 1].t1 = float(list(filtered_beam_list['t1'])[0])
+    #                     beams[k - 1].t2 = float(list(filtered_beam_list['t2'])[0])
+    #                     beams[k - 1].Z = float(list(filtered_beam_list['Z'])[0])
+    #                     beams[k - 1].Zp = float(list(filtered_beam_list['Zp'])[0])
+    #                     beams[k - 1].F = float(list(filtered_beam_list['F'])[0])
+    #
+    # #梁断面の再グルーピング
+    # temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
+    #       for i in range(len(beams))]
+    # table_columns = ["No","H","B","story"]
+    # group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
+    # beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
     #梁断面の更新に伴う剛度の更新
     for i in beams:
