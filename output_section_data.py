@@ -20,7 +20,7 @@ def output_section_data(columns,beams,beam_select_mode):
                              i.NL,i.NSx,i.NSy,i.MLx,i.MLy,i.MSx,i.MSy,i.QLx,i.QLy,i.QSx,i.QSy])
 
 #全データの出力
-def output_whole_data(columns,beams,beam_select_mode,nodes):
+def output_whole_data(columns,beams,nodes,layers):
     #csvファイル名
     output_file = 'output_whole_data'
 
@@ -60,3 +60,13 @@ def output_whole_data(columns,beams,beam_select_mode,nodes):
                              i.beam_no_each_node2_x, i.member_no_each_node2_x, i.beam_no_each_node_y, i.beam_no_each_node2_y, i.member_no_each_node_y,
             i.member_no_each_node2_y, i.node_member_stiff_x, i.node_member_stiff_y, i.node_member_stiff2_x, i.node_member_stiff2_y,
                              i.req_Mpx,i.req_Mpy])
+        writer.writerow(['<layer_data>'])
+        writer.writerow(
+            ['story','height','shear_force_x','shear_force_y','omega1','omega2','omega1_seismic','omega2_seismic','floor_area','outerwall_length',
+             'weight','cum_weight','alpha_i','Ai','Ci','Qi','horizontal_disp_x','horizontal_disp_y','horizontal_angle_x,','horizontal_angle_y','column_num',
+             'req_D_sum_x','req_D_sum_y','req_D_x','req_D_y','D_sum_x','D_sum_y','D_max_x','D_max_y',
+             'k_limit1_x','k_limit1_y','I_limit1_x','I_limit1_y'])
+        for i in layers:
+            writer.writerow([i.story, i.height, i.shear_force_x, i.shear_force_y, i.omega1, i.omega2, i.omega1_seismic, i.omega2_seismic,i.floor_area,i.outerwall_length,
+                             i.weight, i.cum_weight, i.alpha_i, i.Ai, i.Ci, i.Qi, i.horizontal_disp_x, i.horizontal_disp_y, i.horizontal_angle_x, i.horizontal_angle_y, i.column_num,
+            i.req_D_sum_x, i.req_D_sum_y, i.req_D_x, i.req_D_y, i.D_sum_x, i.D_sum_y, i.D_max_x, i.D_max_y, i.k_limit1_x, i.k_limit1_y, i.I_limit1_x, i.I_limit1_y])

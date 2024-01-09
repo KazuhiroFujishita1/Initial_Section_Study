@@ -4,13 +4,21 @@ from set_initial_section import *
 from calc_weight import *
 from update_section import *
 from output_section_data import *
+import yaml
 
 ## メイン関数 ##
 if __name__ == "__main__":
 
 #計算における定数の設定
     EE= 205000000 #鋼材のヤング係数
-    beam_select_mode = "cost" #梁リストの選定モード(cost or design)
+# 計算条件に関するyamlファイルの読み込み
+    file_path = "calc_condition.yaml"
+    with open(file_path, 'r') as file:
+        data = yaml.safe_load(file)
+    if data:
+        beam_select_mode = data.get('CalcCondition')
+    else:
+        print("calclation condition can not be read.")
 
 #データの読み込み
     nodes, beams, columns, layers, maximum_height = read_model()
@@ -43,4 +51,4 @@ if __name__ == "__main__":
 #選定断面の出力
     output_section_data(columns,beams,beam_select_mode)
 #全データの出力
-    output_whole_data(columns,beams,beam_select_mode,nodes)
+    output_whole_data(columns,beams,nodes,layers)
