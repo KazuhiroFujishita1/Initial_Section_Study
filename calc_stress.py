@@ -8,36 +8,29 @@ def calc_moment(FEM_sum,member_no_each_node,myu,nodes,beams,columns,beam_no):
     C1 = [];
     C1_sum = np.zeros(len(nodes))
 
-    for i in beam_no:
+    for i in beam_no:#梁について
         temp_i = 0;temp_j=0
-        for j in range(len(nodes)):#i端の算定
-            if beams[i-1].i == nodes[j].no:
-                for k in range(len(member_no_each_node[j])):
-                    if beams[i-1].no == member_no_each_node[j][k]:
-                        temp_i=float(myu[j][k])
-            if beams[i-1].j == nodes[j].no:
-                for k in range(len(member_no_each_node[j])):
-                    if beams[i-1].no == member_no_each_node[j][k]:
-                        temp_j = float(myu[j][k])
+        for k in range(len(member_no_each_node[beams[i-1].i])):#i端側の算定
+            if beams[i - 1].no == member_no_each_node[beams[i-1].i][k]:
+                temp_i = float(myu[beams[i-1].i-1][k])
+        for k in range(len(member_no_each_node[beams[i-1].j])):#j端側の算定
+            if beams[i - 1].no == member_no_each_node[beams[i-1].j][k]:
+                temp_j = float(myu[beams[i-1].j-1][k])
 
         D1.append([-FEM_sum[beams[i-1].i-1]*temp_i, -FEM_sum[beams[i-1].j-1]*temp_j])
         C1.append([-FEM_sum[beams[i-1].j - 1] * temp_j/2.0, -FEM_sum[beams[i-1].i - 1] * temp_i/2.0])
         C1_sum[beams[i-1].i-1]+=-FEM_sum[beams[i-1].j-1] * temp_j/2.0
         C1_sum[beams[i-1].j-1]+=-FEM_sum[beams[i-1].i-1] * temp_i/2.0
 
-    for column in columns:
+    for column in columns:#柱について
         temp_i = 0;
         temp_j = 0
-        for j in range(len(nodes)):  # i端の算定
-            if column.i == nodes[j].no:
-                for k in range(len(member_no_each_node[j])):
-                    if column.no + len(beams) == member_no_each_node[j][k]:
-                        temp_i = float(myu[j][k])
-
-            if column.j == nodes[j].no:
-                for k in range(len(member_no_each_node[j])):
-                    if column.no  +len(beams) == member_no_each_node[j][k]:
-                        temp_j = float(myu[j][k])
+        for k in range(len(member_no_each_node[column.i])):#i端側の算定
+            if column.no + len(beams) == member_no_each_node[column.i][k]:
+                temp_i = float(myu[column.i-1][k])
+        for k in range(len(member_no_each_node[column.j])):#j端側の算定
+            if column.no + len(beams) == member_no_each_node[column.j][k]:
+                temp_j = float(myu[column.j-1][k])
 
         D1.append([-FEM_sum[column.i - 1] * temp_i, -FEM_sum[column.j - 1] * temp_j])
         C1.append([-FEM_sum[column.j - 1] * temp_j / 2.0, -FEM_sum[column.i - 1] * temp_i / 2.0])
@@ -149,19 +142,15 @@ def fixed_moment_method(nodes,beams,columns,EE):
 
 #各部材ごとに梁の分担モーメント、到達モーメントの算定（1回目）
 
-    member_no_each_node2_x=[];member_no_each_node2_y=[]
-    for node in nodes:
-        member_no_each_node2_x.append(node.member_no_each_node2_x)
-    for node in nodes:
-        member_no_each_node2_y.append(node.member_no_each_node2_y)
+    member_no_each_node2_x_dict = {node.no: node.member_no_each_node2_x for node in nodes}
+    member_no_each_node2_y_dict = {node.no: node.member_no_each_node2_y for node in nodes}
 
-    D1_x,C1_x,C1_sum_x = calc_moment(FEM_sum_x,member_no_each_node2_x,myu_x,nodes,beams,columns,beam_no_x)
-    D1_y,C1_y,C1_sum_y = calc_moment(FEM_sum_y,member_no_each_node2_y,myu_y,nodes,beams,columns,beam_no_y)
-
+    D1_x,C1_x,C1_sum_x = calc_moment(FEM_sum_x,member_no_each_node2_x_dict,myu_x,nodes,beams,columns,beam_no_x)
+    D1_y,C1_y,C1_sum_y = calc_moment(FEM_sum_y,member_no_each_node2_y_dict,myu_y,nodes,beams,columns,beam_no_y)
 
 #各部材ごとに梁の分担モーメントの算定（2回目）
-    D2_x,C2_x,C2_sum_x = calc_moment(C1_sum_x,member_no_each_node2_x,myu_x,nodes,beams,columns,beam_no_x)
-    D2_y,C2_y,C2_sum_y = calc_moment(C1_sum_y,member_no_each_node2_y,myu_y,nodes,beams,columns,beam_no_y)
+    D2_x,C2_x,C2_sum_x = calc_moment(C1_sum_x,member_no_each_node2_x_dict,myu_x,nodes,beams,columns,beam_no_x)
+    D2_y,C2_y,C2_sum_y = calc_moment(C1_sum_y,member_no_each_node2_y_dict,myu_y,nodes,beams,columns,beam_no_y)
 
 #各部材ごとにモーメントの和、部材長の算定(C2まで計算する）
     temp = 0
