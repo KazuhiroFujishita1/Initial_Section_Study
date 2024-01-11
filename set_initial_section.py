@@ -113,6 +113,8 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
 
     #経験式に基づく初期梁せいの算定
     temp2=0
+    #等価な基礎梁の断面二次モーメント
+    II = 3240000000#800×900の基礎梁断面
     for beam in beams:
         if beam.category != "BB":#基礎梁以外で適用
             temp = beam.length*m_to_mm/18.0#鹿島様略算式
@@ -141,7 +143,11 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             beam.F = float(list(sorted_target_rows['F'])[0])
 
         #梁の剛度の算定(単位cm3）
-            beam.K = beam.I/beam.length*1000000*beam.pai#床スラブの剛性増大率考慮
+            # 梁せいに応じた床スラブによる梁の剛性増大率の考慮
+            if beam.H <= 600:
+                beam.K = beam.I/beam.length*1000000*beam.pai2#床スラブの剛性増大率考慮
+            else:
+                beam.K = beam.I/beam.length*1000000*beam.pai#床スラブの剛性増大率考慮
 
         # 部材自重の算定
             beam.unit_weight = float(list(sorted_target_rows['unit_m'])[0]*9.80665/m_to_mm)
@@ -153,7 +159,9 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
         #基礎梁の場合、選択した柱のせいより決まる剛度を設定
         else:#とりあえずi端側の柱を参照
             beam.K = columns[nodes[beam.i-1].column_no_each_node_x[0]-1].base_K
-            beam.stiff_ratio = columns[nodes[beam.i-1].column_no_each_node_x[0]-1].base_K/100.0
+            #beam.stiff_ratio = columns[nodes[beam.i-1].column_no_each_node_x[0]-1].base_K/100.0
+            beam.eq_beam_stiff_ratio_i = 1.0/(1.0/columns[nodes[beam.i-1].column_no_each_node_x[0]-1].base_K+1.0/(II/(beam.length*m_to_mm)))/100000.0
+            beam.eq_beam_stiff_ratio_j = 1.0/(1.0/columns[nodes[beam.j-1].column_no_each_node_x[0]-1].base_K+1.0/(II/(beam.length*m_to_mm)))/100000.0
             beam.selected_section_no = ""
             beam.I =  0
             beam.H =  0

@@ -39,7 +39,7 @@ def check_beam_height(nodes, beam_groups, beams):
         for j in beam_group.neighbor_group_no:
             neighbor_H = beams[beam_groups[j - 1].ID[0] - 1].H  # 隣接する梁グループに属する梁のせい
             if abs(test_H-neighbor_H) > 5 and abs(test_H-neighbor_H) < 200:#せいに調整が必要な場合　NGを返す
-                beam_height_condition ="beam height is NG"
+                #beam_height_condition ="beam height is NG"
                 check1 = False
                 break
     return beam_height_condition, check1
@@ -271,8 +271,8 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
                     beam.M_Lx0 = beam.M0 - np.average([beam.M_Lx[0], beam.M_Lx[1]])
                     beam.delta_x = (5 * beam.M_Lx0 / (48.0 * EE * beam.I) * beam.length ** 2
                                 - sum(beam.M_Lx) / (16.0 * EE * beam.I) * beam.length ** 2)  # 梁中央のたわみ（未検証）
-                # 大梁たわみが1/300以下であるか確認
-                    if abs(beam.delta_x / beam.length) >= 1.0 / 300.0:
+                # 大梁たわみが1/300以上または20mm以上の場合大梁断面を更新
+                    if abs(beam.delta_x / beam.length) >= 1.0 / 300.0 or beam.delta_x > 0.02:
                     #NGの場合梁リストから一段上げて再確認
                         temp_no += 1
                         beam.I = float(list(filtered_list2['Ix'])[temp_no])  # 断面諸元の更新
@@ -283,15 +283,16 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
                         beam.Z = float(list(filtered_list2['Z'])[temp_no])
                         beam.Zp = float(list(filtered_list2['Zp'])[temp_no])
                         beam.F = float(list(filtered_list2['F'])[temp_no])
-                        print("Beam deflection is NG")
+                        #print("Beam deflection is NG")
                     else:
+                        print("Beam deflection is OK")
                         break
                 else:
                     beam.M_Ly0 = beam.M0 - np.average([beam.M_Ly[0], beam.M_Ly[1]])
                     beam.delta_y = (5 * beam.M_Ly0 / (48.0 * EE * beam.I) * beam.length ** 2
                                 - sum(beam.M_Ly) / (16.0 * EE * beam.I) * beam.length ** 2)  # 梁中央のたわみ（未検証）
                 # 大梁たわみが1/300以下であるか確認
-                    if abs(beam.delta_y / beam.length) >= 1.0 / 300.0:
+                    if abs(beam.delta_y / beam.length) >= 1.0 / 300.0 or beam.delta_y > 0.02:
                     # NGの場合梁リストから一段上げて再確認
                         temp_no += 1
                         beam.I = float(list(filtered_list2['Ix'])[temp_no])  # 断面諸元の更新
@@ -302,8 +303,9 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
                         beam.Z = float(list(filtered_list2['Z'])[temp_no])
                         beam.Zp = float(list(filtered_list2['Zp'])[temp_no])
                         beam.F = float(list(filtered_list2['F'])[temp_no])
-                        print("Beam deflection is NG")
+                        #print("Beam deflection is NG")
                     else:
+                        print("Beam deflection is OK")
                         break
 
             #i.judge_b_L = sigma_b_L/(f_b/1.5)
@@ -399,7 +401,11 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
     #梁断面の更新に伴う剛度の更新
     for beam in beams:
         if beam.category != "BB":#基礎梁以外の断面を更新
-            beam.K = beam.I/beam.length*m_to_mm**2*beam.pai#床スラブの剛性増大率考慮
+            # 梁せいに応じた床スラブによる梁の剛性増大率の考慮
+            if beam.H <= 600:
+                beam.K = beam.I/beam.length*m_to_mm**2*beam.pai2#床スラブの剛性増大率考慮
+            else:
+                beam.K = beam.I/beam.length*m_to_mm**2*beam.pai#床スラブの剛性増大率考慮
 
 #剛性チェックに基づく各層柱の必要剛性の算定
 def calc_based_stiffness(nodes,layers,beams,columns,EE):
@@ -513,14 +519,14 @@ def member_strength_check(nodes,beams,columns):
         #ratio_x = temp_column_Mp_x/temp_beam_Mp_x
         #ratio_y = temp_column_Mp_y / temp_beam_Mp_y
 
-        #柱梁耐力比が1.0以下の場合、1以上にするために必要な柱の全塑性モーメントを求める
+        #柱梁耐力比が1.5以下の場合、1.5以上にするために必要な柱の全塑性モーメントを求める
         if len(node.column_no_each_node_x) > 1:#最上層、最下層以外で検討
-            node.req_Mpx = temp_beam_Mp_x / len(node.beam_no_each_node_x)
+            node.req_Mpx = temp_beam_Mp_x / len(node.beam_no_each_node_x)*1.5
         else:
             node.req_Mpx = 0
 
         if len(node.column_no_each_node_y) > 1:  # 最上層、最下層以外で検討
-            node.req_Mpy = temp_beam_Mp_y / len(node.beam_no_each_node_y)
+            node.req_Mpy = temp_beam_Mp_y / len(node.beam_no_each_node_y)*1.5
         else:
             node.req_Mpy = 0
 

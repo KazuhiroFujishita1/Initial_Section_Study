@@ -331,11 +331,27 @@ def calc_D(nodes,columns,beams,layers,direction,D_sum):
         flag = 3 #とりあえず基礎梁があるものとし、D値法では境界条件の影響は考えない。
 
         for j in temp:#i端側に接続する梁部材の剛性のみを抽出
-            temp_stiff.append(beams[j-1].stiff_ratio)
-            temp_stiff_i.append(beams[j-1].stiff_ratio)
+            if beams[j-1].category == "BB":#基礎梁の場合、各サイドの等価梁で異なる剛比を取得
+                if beams[j-1].i == nodes[column.i - 1].no:
+                    temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_i)
+                    temp_stiff_i.append(beams[j-1].eq_beam_stiff_ratio_i)
+                else:
+                    temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_j)
+                    temp_stiff_i.append(beams[j-1].eq_beam_stiff_ratio_j)
+            else:#基礎梁以外の場合
+                temp_stiff.append(beams[j-1].stiff_ratio)
+                temp_stiff_i.append(beams[j-1].stiff_ratio)
         for j in temp2:#j端側に接続する梁部材の剛性のみを抽出
-            temp_stiff.append(beams[j-1].stiff_ratio)
-            temp_stiff_j.append(beams[j-1].stiff_ratio)
+            if beams[j-1].category == "BB":#基礎梁の場合、各サイドの等価梁で異なる剛比を取得
+                if beams[j-1].i == nodes[column.i - 1].no:
+                    temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_i)
+                    temp_stiff_j.append(beams[j-1].eq_beam_stiff_ratio_i)
+                else:
+                    temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_j)
+                    temp_stiff_j.append(beams[j-1].eq_beam_stiff_ratio_j)
+            else:#基礎梁以外の場合
+                temp_stiff.append(beams[j-1].stiff_ratio)
+                temp_stiff_j.append(beams[j-1].stiff_ratio)
 
         if flag == 1:
             kk_temp = sum(temp_stiff) / (column.stiff_ratio_x)
@@ -447,11 +463,24 @@ def D_method(nodes,layers,beams,columns,EE):
         temp=0;temp2=0
         for beam in beams:
             if beam.direction == "X":
-                if beam.i == node.no or beam.j == node.no:
-                    temp += beam.stiff_ratio
+                if beam.category != "BB":#基礎梁以外で適用
+                    if beam.i == node.no or beam.j == node.no:
+                        temp += beam.stiff_ratio
+                else:#基礎梁の場合
+                    if beam.i == node.no:
+                        temp += beam.eq_beam_stiff_ratio_i
+                    if beam.j == node.no:
+                        temp += beam.eq_beam_stiff_ratio_j
             else:
-                if beam.i == node.no or beam.j == node.no:
-                    temp2 += beam.stiff_ratio
+                if beam.category != "BB":#基礎梁以外で適用
+                    if beam.i == node.no or beam.j == node.no:
+                        temp2 += beam.stiff_ratio
+                else:#基礎梁の場合
+                    if beam.i == node.no:
+                        temp2 += beam.eq_beam_stiff_ratio_i
+                    if beam.j == node.no:
+                        temp2 += beam.eq_beam_stiff_ratio_j
+
         stiff_c_x.append(temp)
         stiff_c_y.append(temp2)
 
@@ -463,17 +492,33 @@ def D_method(nodes,layers,beams,columns,EE):
             if beam.i == node.no:
                 for k in node.member_no_each_node_x:
                     if beam.no == k:
-                        temp_i_x=float(beam.stiff_ratio/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
+                        if beam.category != "BB":#基礎梁以外で適用
+                            temp_i_x=float(beam.stiff_ratio/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
+                        else:#基礎梁の場合i端側の剛比を代入
+                            temp_i_x=float(beam.eq_stiff_ratio_i/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
+
                 for k in node.member_no_each_node_y:
                     if beam.no == k:
-                        temp_i_y=float(beam.stiff_ratio/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
+                        if beam.category != "BB":#基礎梁以外で適用
+                            temp_i_y=float(beam.stiff_ratio/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
+                        else:#基礎梁の場合i端側の剛比を代入
+                            temp_i_y=float(beam.eq_stiff_ratio_i/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
+
             if beam.j == node.no:#j端の算定
                 for k in node.member_no_each_node_x:
                     if beam.no == k:
-                        temp_j_x=float(beam.stiff_ratio/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
+                        if beam.category != "BB":#基礎梁以外で適用
+                            temp_j_x=float(beam.stiff_ratio/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
+                        else:#基礎梁の場合j端側の剛比を代入
+                            temp_j_x=float(beam.eq_stiff_ratio_j/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
+
                 for k in node.member_no_each_node_y:
                     if beam.no == k:
-                        temp_j_y=float(beam.stiff_ratio/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
+                        if beam.category != "BB":#基礎梁以外で適用
+                            temp_j_y=float(beam.stiff_ratio/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
+                        else:#基礎梁の場合j端側の剛比を代入
+                            temp_j_y= float(beam.eq_stiff_ratio_j/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
+
         beam.M_Sx = [temp_i_x,temp_j_x]
         beam.M_Sy = [temp_i_y, temp_j_y]
 

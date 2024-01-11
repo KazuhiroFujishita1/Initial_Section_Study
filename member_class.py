@@ -40,7 +40,7 @@ def read_model():
         else:
             beam_direction="Y"
         beam_data.append((df2['no'][i],df2['i_point'][i],df2['j_point'][i],beam_length,
-                          dist_load,beam_load_i,beam_load_j,df2['category'][i],beam_direction,df2['phi'][i],M0,Q0,df2['story'][i]))
+                          dist_load,beam_load_i,beam_load_j,df2['category'][i],beam_direction,df2['phi'][i],df2['phi2'][i],M0,Q0,df2['story'][i]))
 
     beams = [Beam(*data) for data in beam_data] #梁インスタンスの作成
 
@@ -99,14 +99,17 @@ class Node():
     # 梁のクラス
 class Beam():
     def __init__(self,beam_no,beam_i,beam_j,beam_length,
-                 dist_load,beam_load_i,beam_load_j,beam_category,beam_direction,beam_phai,M0,Q0,story):
+                 dist_load,beam_load_i,beam_load_j,beam_category,beam_direction,beam_phai,beam_phai2,M0,Q0,story):
         self.no = beam_no
         self.i = beam_i
         self.j = beam_j
         self.length = beam_length
         self.I = []#beam_section_I
         self.K = [] #剛度
+        self.eq_beam_stiff_ratio_i = [] #i端側の柱に考慮する等価な基礎梁剛比
+        self.eq_beam_stiff_ratio_j = [] #j端側の柱に考慮する等価な基礎梁剛比
         self.pai = beam_phai #床スラブの剛性増大率
+        self.pai2 = beam_phai2 #床スラブの剛性増大率（せい600mm以下）
         self.stiff_ratio = []#beam_stiff#剛比
         self.dist_load = dist_load #梁の分布荷重
         self.Ci = beam_load_i#i端の固定端モーメント
