@@ -40,7 +40,7 @@ def read_model():
         else:
             beam_direction="Y"
         beam_data.append((df2['no'][i],df2['i_point'][i],df2['j_point'][i],beam_length,
-                          dist_load,beam_load_i,beam_load_j,df2['category'][i],beam_direction,df2['phi'][i],df2['phi2'][i],M0,Q0,df2['story'][i]))
+                          dist_load,beam_load_i,beam_load_j,df2['category'][i],beam_direction,df2['phi'][i],df2['phi2'][i],M0,Q0,df2['story'][i],df2['boundary_i'][i],df2['boundary_j'][i]))
 
     beams = [Beam(*data) for data in beam_data] #梁インスタンスの作成
 
@@ -99,7 +99,7 @@ class Node():
     # 梁のクラス
 class Beam():
     def __init__(self,beam_no,beam_i,beam_j,beam_length,
-                 dist_load,beam_load_i,beam_load_j,beam_category,beam_direction,beam_phai,beam_phai2,M0,Q0,story):
+                 dist_load,beam_load_i,beam_load_j,beam_category,beam_direction,beam_phai,beam_phai2,M0,Q0,story,boundaryi,boundaryj):
         self.no = beam_no
         self.i = beam_i
         self.j = beam_j
@@ -117,6 +117,8 @@ class Beam():
         self.category = beam_category#基礎梁か否か
         self.direction = beam_direction#梁方向
         self.story = story
+        self.boundary_i = boundaryi#i端の境界条件
+        self.boundary_j = boundaryj#j端の境界条件
 
         self.M0 = M0#MQ荷重※とりあえずM0は単純梁の曲げモーメントとして内部計算に使用
         self.Q0 = Q0
