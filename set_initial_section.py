@@ -189,6 +189,30 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
                 if node.no == beam.i or node.no == beam.j :
                     if beam.category == "BB":#基礎梁の場合
                         member_stiff_temp2_x.append(1000000000)# 固定モーメント法の時は基礎梁剛性は無限大
+                    elif beam.boundary_i == "pin" and beam.boundary_j == "fix":
+                        # i端の境界条件がピン、j端の境界条件が固定の場合
+                        if node.no == beam.i:
+                            member_stiff_temp2_x.append(0)
+                            member_stiff_temp_x.append(0)
+                        elif node.no == beam.j:
+                            member_stiff_temp2_x.append(beam.stiff_ratio*0.5)
+                            member_stiff_temp_x.append(beam.stiff_ratio*0.5)
+                    elif beam.boundary_i == "fix" and beam.boundary_j == "pin":
+                        # i端の境界条件が固定、j端の境界条件がピンの場合
+                        if node.no == beam.i:
+                            member_stiff_temp2_x.append(beam.stiff_ratio*0.5)
+                            member_stiff_temp_x.append(beam.stiff_ratio * 0.5)
+                        elif node.no == beam.j:
+                            member_stiff_temp2_x.append(0)
+                            member_stiff_temp_x.append(0)
+                    elif beam.boundary_i == "pin" and beam.boundary_j == "pin":
+                            # i端の境界条件がピン、j端の境界条件がピンの場合
+                        if node.no == beam.i:
+                            member_stiff_temp2_x.append(0)
+                            member_stiff_temp_x.append(0)
+                        elif node.no == beam.j:
+                            member_stiff_temp2_x.append(0)
+                            member_stiff_temp_x.append(0)
                     else:
                         member_stiff_temp2_x.append(beam.stiff_ratio)
                         member_stiff_temp_x.append(beam.stiff_ratio)
@@ -207,8 +231,32 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
                 if node.no == beam.i or node.no == beam.j:
                     if beam.category == "BB":#基礎梁の場合
                         member_stiff_temp2_y.append(1000000000)# 固定モーメント法の時は基礎梁剛性は無限大
-                    else:
+                    elif beam.boundary_i == "pin" and beam.boundary_j == "fix":
+                        # i端の境界条件がピン、j端の境界条件が固定の場合
+                        if node.no == beam.i:
+                            member_stiff_temp2_y.append(0)
+                            member_stiff_temp_y.append(0)
+                        elif node.no == beam.j:
+                            member_stiff_temp2_y.append(beam.stiff_ratio*0.5)
+                            member_stiff_temp_y.append(beam.stiff_ratio*0.5)
+                    elif beam.boundary_i == "fix" and beam.boundary_j == "pin":
+                        # i端の境界条件が固定、j端の境界条件がピンの場合
+                        if node.no == beam.i:
+                            member_stiff_temp2_y.append(beam.stiff_ratio*0.5)
+                            member_stiff_temp_y.append(beam.stiff_ratio*0.5)
+                        elif node.no == beam.j:
+                            member_stiff_temp2_y.append(0)
+                            member_stiff_temp_y.append(0)
+                    elif beam.boundary_i == "pin" and beam.boundary_j == "pin":
+                            # 両端ピンの場合
+                        if node.no == beam.i:
+                            member_stiff_temp2_y.append(0)
+                            member_stiff_temp_y.append(0)
+                        elif node.no == beam.j:
+                            member_stiff_temp2_y.append(0)
+                            member_stiff_temp_y.append(0)
 
+                    else:
                         member_stiff_temp2_y.append(beam.stiff_ratio)  # 固定モーメント法の時は基礎梁剛性は無限大
                         member_stiff_temp_y.append(beam.stiff_ratio)
 
