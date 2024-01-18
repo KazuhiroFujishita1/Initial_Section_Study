@@ -93,33 +93,92 @@ def detect_connection(nodes,beams,columns):
         node.member_no_each_node2_x = temp4_x+temp2_x#全部材を通し番号で整理（基礎梁含む）
         node.member_no_each_node2_y = temp4_y+temp2_y#全部材を通し番号で整理（基礎梁含む）
 
+#梁部材について基礎梁か否か、また梁端境界条件に応じた等価剛比を格納
+def calc_eq_beam_stiffness(beams,columns,nodes):
+    #単位変換用係数
+    m_to_mm = 1000.0#m→mmへ
+    II = 3240000000#800×900の基礎梁断面
+    for beam in beams:
+        if beam.category != "BB":  # 基礎梁以外
+            if beam.boundary_i == "pin" and beam.boundary_j == "fix":  # i端がピン接合の場合
+                beam.eq_beam_stiff_ratio_i = 0
+                beam.eq_beam_stiff_ratio_j = beam.stiff_ratio * 0.5
+            elif beam.boundary_i == "fix" and beam.boundary_j == "pin":  # j端がピン接合の場合
+                beam.eq_beam_stiff_ratio_i = beam.stiff_ratio * 0.5
+                beam.eq_beam_stiff_ratio_j = 0
+            elif beam.boundary_i == "pin" and beam.boundary_j == "pin":  # 両端がピン接合の場合
+                beam.eq_beam_stiff_ratio_i = 0
+                beam.eq_beam_stiff_ratio_j = 0
+            else:
+                beam.eq_beam_stiff_ratio_i = beam.stiff_ratio
+                beam.eq_beam_stiff_ratio_j = beam.stiff_ratio  # 両端に同じ等価剛比を代入
+
+        else:  # 基礎梁の場合
+            beam.K = columns[nodes[beam.i-1].column_no_each_node_x[0]-1].base_K
+            beam.eq_beam_stiff_ratio_i = 1.0/(1.0/columns[nodes[beam.i-1].column_no_each_node_x[0]-1].base_K+1.0/(II/(beam.length*m_to_mm)))/100000.0
+            beam.eq_beam_stiff_ratio_j = 1.0/(1.0/columns[nodes[beam.j-1].column_no_each_node_x[0]-1].base_K+1.0/(II/(beam.length*m_to_mm)))/100000.0
+
+#固定モーメント法に関する関数
+#モーメント分担率の算定
+def distribute_moment(node_moment):
+    myu_temp = []
+    if len(node_moment) > 1:
+        for j in node_moment:
+            myu_temp.append(j / sum(node_moment))
+    elif len(node_moment) == 1:
+        myu_temp.append(1)
+
+    return myu_temp
+
+#梁たわみ算定
+def calc_beam_deflection(beam_no,beams,EE,dir):
+    beam_M=[];delta=[]
+    temp=0
+    for i in beam_no:
+        if beams[i-1].category != "BB":
+            if dir == "x":
+                beam_M.append(beams[i-1].M0\
+                          -np.average([beams[i-1].M_Lx[0],beams[i-1].M_Lx[1]]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
+                delta.append(5 * beam_M[temp] / (48.0 * EE * beams[i - 1].I) * beams[i - 1].length ** 2
+                                       -sum(beams[i-1].M_Lx)/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
+            else:
+                beam_M.append(beams[i-1].M0\
+                          -np.average([beams[i-1].M_Ly[0],beams[i-1].M_Ly[1]]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
+                delta.append(5 * beam_M[temp] / (48.0 * EE * beams[i - 1].I) * beams[i - 1].length ** 2
+                                       -sum(beams[i-1].M_Ly)/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
+
+        else:#基礎梁の場合、とりあえず0に
+            beam_M.append(0)
+            delta.append(0)
+        temp +=1
+    return beam_M, delta
+
+# def calc_moment_sum(FEM1,D1,C1,D2,C2,beam_no,columns):
+#     temp = 0
+#     beam_moment=[];column_moment=[]
+#     for i in beam_no:
+#         beam_moment.append(np.array(FEM1[temp])+np.array(D1[temp])+np.array(C1[temp])+np.array(D2[temp])+np.array(C2[temp]))#固定モーメント法の解
+#         temp +=1
+#
+#     for column in columns:
+#         column_moment.append(np.array(D1[temp])+np.array(C1[temp])+np.array(D2[temp])+np.array(C2[temp]))#固定モーメント法の解
+#         temp +=1
+#
+#     return beam_moment, column_moment
+
 #固定モーメント法による長期荷重の算定(鹿島様受領Excel（固定モーメント法）の通り）
 # #各節点に接続する梁の固定端モーメントの算定
 #それぞれの節点に接続する柱梁番号をリストとして整理、モーメント分担率の算定
 def fixed_moment_method(nodes,beams,columns,EE):
 
 #各節点ごとに部材ごとのモーメント分担率の算定
-    myu_x=[];FEM_sum_x=np.zeros(int((len(nodes))))
-    myu_y=[];FEM_sum_y=np.zeros(int((len(nodes))))
+    myu_x =[];myu_y=[]
+    FEM_sum_x=np.zeros(int((len(nodes))))
+    FEM_sum_y=np.zeros(int((len(nodes))))
     for node in nodes:
-        myu_temp=[]
-
     #モーメント分担率の算定
-        if len(node.node_member_stiff2_x) > 1:
-            for j in node.node_member_stiff2_x:
-                myu_temp.append(j/sum(node.node_member_stiff2_x))
-        elif len(node.node_member_stiff2_x) == 1:
-            myu_temp.append(1)
-        myu_x.append(myu_temp)
-
-        myu_temp=[]
-        # モーメント分担率の算定
-        if len(node.node_member_stiff2_y) > 1:
-            for j in node.node_member_stiff2_y:
-                myu_temp.append(j / sum(node.node_member_stiff2_y))
-        elif len(node.node_member_stiff2_y) == 1:
-            myu_temp.append(1)
-        myu_y.append(myu_temp)
+        myu_x.append(distribute_moment(node.node_member_stiff2_x))
+        myu_y.append(distribute_moment(node.node_member_stiff2_y))
 
 #各節点の梁の固定端モーメントの算定（1回目）
     FEM1_x = [];FEM1_y = [];beam_no_x=[];beam_no_y=[]
@@ -141,7 +200,6 @@ def fixed_moment_method(nodes,beams,columns,EE):
             FEM1_y.append([-beam.Ci,beam.Cj])
 
 #各部材ごとに梁の分担モーメント、到達モーメントの算定（1回目）
-
     member_no_each_node2_x_dict = {node.no: node.member_no_each_node2_x for node in nodes}
     member_no_each_node2_y_dict = {node.no: node.member_no_each_node2_y for node in nodes}
 
@@ -152,7 +210,7 @@ def fixed_moment_method(nodes,beams,columns,EE):
     D2_x,C2_x,C2_sum_x = calc_moment(C1_sum_x,member_no_each_node2_x_dict,myu_x,nodes,beams,columns,beam_no_x)
     D2_y,C2_y,C2_sum_y = calc_moment(C1_sum_y,member_no_each_node2_y_dict,myu_y,nodes,beams,columns,beam_no_y)
 
-#各部材ごとにモーメントの和、部材長の算定(C2まで計算する）
+#各部材ごとにモーメントの和の算定(C2まで計算する）
     temp = 0
     for i in beam_no_x:
         beams[i-1].M_Lx = np.array(FEM1_x[temp])+np.array(D1_x[temp])+np.array(C1_x[temp])+np.array(D2_x[temp])+np.array(C2_x[temp])#固定モーメント法の解
@@ -172,17 +230,19 @@ def fixed_moment_method(nodes,beams,columns,EE):
         temp += 1
 
 #各部材ごとに大梁のたわみ算定(ダミーの基礎梁は除く）
-    temp=0
+    beam_M_x, delta_x = calc_beam_deflection(beam_no_x,beams,EE,"x")
+    temp = 0
     for i in beam_no_x:
-        if beams[i-1].category != "BB":
-            beams[i-1].M_Lx0 = beams[i-1].M0\
-                          -np.average([beams[i-1].M_Lx[0],beams[i-1].M_Lx[1]])#固定端モーメントを考慮した梁中央の曲げモーメントM0
-            beams[i-1].delta_x = (5*beams[i-1].M_Lx0/(48.0*EE*beams[i-1].I)*beams[i-1].length**2
-                              -sum(beams[i-1].M_Lx)/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証）
-            temp += 1
-        else:#基礎梁の場合、とりあえず0に
-            beams[i - 1].M_Lx0 = 0
-            beams[i - 1].delta_x = 0
+        beams[i-1].M_Lx0 = beam_M_x[temp]
+        beams[i-1].delta_x = delta_x[temp]
+        temp +=1
+
+    # beam_M_y, delta_y = calc_beam_deflection(beam_no_y,beams,EE,"y")
+    # temp = 0
+    # for i in beam_no_y:
+    #     beams[i-1].M_Lx0 = beam_M_y[temp]
+    #     beams[i-1].delta_x = delta_y[temp]
+    #     temp +=1
 
     temp=0
     for i in beam_no_y:
@@ -328,72 +388,23 @@ def calc_D(nodes,columns,beams,layers,direction,D_sum):
         #elif (nodes[i.i-1].boundary_cond == "fix" or
         #        nodes[i.j-1].boundary_cond == "fix"):
         #    flag = 2  # 柱のi,j側節点に固定支点が含まれる場合
-        flag = 3 #とりあえず基礎梁があるものとし、D値法では境界条件の影響は考えない。
+        flag = 3 #とりあえず基礎梁があるものとし、架構基部の境界があるときのD値法の式は考えない。
 
         for j in temp:#i端側に接続する梁部材の剛性のみを抽出
-            if beams[j-1].category == "BB":#基礎梁の場合、各サイドの等価梁で異なる剛比を取得
-                if beams[j-1].i == nodes[column.i - 1].no:
-                    temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_i)
-                    temp_stiff_i.append(beams[j-1].eq_beam_stiff_ratio_i)
-                else:
-                    temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_j)
-                    temp_stiff_i.append(beams[j-1].eq_beam_stiff_ratio_j)
-            elif beams[j-1].boundary_i == "pin" and beams[j-1].boundary_j == "fix":#i端の境界条件がピンの場合
-                if beams[j-1].i == nodes[column.i - 1].no:#i端の剛比は0、j端の剛比は0.5倍
-                    temp_stiff.append(0)
-                    temp_stiff_i.append(0)
-                else:
-                    temp_stiff.append(beams[j-1].stiff_ratio*0.5)
-                    temp_stiff_i.append(beams[j-1].stiff_ratio*0.5)
-            elif beams[j-1].boundary_i == "fix" and beams[j-1].boundary_j == "pin":#j端の境界条件がピンの場合
-                if beams[j-1].i == nodes[column.i - 1].no:#i端の剛比は0.5倍、j端の剛比は0
-                    temp_stiff.append(beams[j-1].stiff_ratio*0.5)
-                    temp_stiff_i.append(beams[j-1].stiff_ratio*0.5)
-                else:
-                    temp_stiff.append(0)
-                    temp_stiff_i.append(0)
-            elif beams[j-1].boundary_i == "pin" and beams[j-1].boundary_j == "pin":#両端ピンの場合
-                if beams[j-1].i == nodes[column.i - 1].no:#i端の剛比は0、j端の剛比は0
-                    temp_stiff.append(0)
-                    temp_stiff_i.append(0)
-                else:
-                    temp_stiff.append(0)
-                    temp_stiff_i.append(0)
-            else:#基礎梁以外の場合
-                temp_stiff.append(beams[j-1].stiff_ratio)
-                temp_stiff_i.append(beams[j-1].stiff_ratio)
+            if beams[j-1].i == nodes[column.i - 1].no:
+                temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_i)
+                temp_stiff_i.append(beams[j-1].eq_beam_stiff_ratio_i)
+            else:
+                temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_j)
+                temp_stiff_i.append(beams[j-1].eq_beam_stiff_ratio_j)
+
         for j in temp2:#j端側に接続する梁部材の剛性のみを抽出
-            if beams[j-1].category == "BB":#基礎梁の場合、各サイドの等価梁で異なる剛比を取得
-                if beams[j-1].i == nodes[column.i - 1].no:
-                    temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_i)
-                    temp_stiff_j.append(beams[j-1].eq_beam_stiff_ratio_i)
-                else:
-                    temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_j)
-                    temp_stiff_j.append(beams[j-1].eq_beam_stiff_ratio_j)
-            elif beams[j-1].boundary_i == "pin" and beams[j-1].boundary_j == "fix":#i端の境界条件がピンの場合
-                if beams[j-1].i == nodes[column.i - 1].no:#i端の剛比は0、j端の剛比は0.5倍
-                    temp_stiff.append(0)
-                    temp_stiff_j.append(0)
-                else:
-                    temp_stiff.append(beams[j-1].stiff_ratio*0.5)
-                    temp_stiff_j.append(beams[j-1].stiff_ratio*0.5)
-            elif beams[j-1].boundary_i == "fix" and beams[j-1].boundary_j == "pin":#j端の境界条件がピンの場合
-                if beams[j-1].i == nodes[column.i - 1].no:#i端の剛比は0.5倍、j端の剛比は0
-                    temp_stiff.append(beams[j-1].stiff_ratio*0.5)
-                    temp_stiff_j.append(beams[j-1].stiff_ratio*0.5)
-                else:
-                    temp_stiff.append(0)
-                    temp_stiff_j.append(0)
-            elif beams[j-1].boundary_i == "pin" and beams[j-1].boundary_j == "pin":#両端ピンの場合
-                if beams[j-1].i == nodes[column.i - 1].no:#i端の剛比は0、j端の剛比は0
-                    temp_stiff.append(0)
-                    temp_stiff_j.append(0)
-                else:
-                    temp_stiff.append(0)
-                    temp_stiff_j.append(0)
-            else:#基礎梁以外の場合
-                temp_stiff.append(beams[j-1].stiff_ratio)
-                temp_stiff_j.append(beams[j-1].stiff_ratio)
+            if beams[j-1].i == nodes[column.i - 1].no:
+                temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_i)
+                temp_stiff_j.append(beams[j-1].eq_beam_stiff_ratio_i)
+            else:
+                temp_stiff.append(beams[j-1].eq_beam_stiff_ratio_j)
+                temp_stiff_j.append(beams[j-1].eq_beam_stiff_ratio_j)
 
         if flag == 1:
             kk_temp = sum(temp_stiff) / (column.stiff_ratio_x)
@@ -505,53 +516,16 @@ def D_method(nodes,layers,beams,columns,EE):
         temp=0;temp2=0
         for beam in beams:
             if beam.direction == "X":
-                if beam.category != "BB":#基礎梁以外で適用
-                    if beam.i == node.no or beam.j == node.no:
-                        temp += beam.stiff_ratio
-                elif beam.boundary_i == "pin" and beam.boundary_j == "fix":#i端がピン接合の場合
-                    if beam.i == node.no:
-                        temp += 0
-                    if beam.j == node.no:
-                        temp += beam.stiff_ratio * 0.5
-                elif beam.boundary_i == "fix" and beam.boundary_j == "pin":#j端がピン接合の場合
-                    if beam.i == node.no:
-                        temp += beam.stiff_ratio * 0.5
-                    if beam.j == node.no:
-                        temp += 0
-                elif beam.boundary_i == "pin" and beam.boundary_j == "pin":#両端がピン接合の場合
-                    if beam.i == node.no:
-                        temp += 0
-                    if beam.j == node.no:
-                        temp += 0
-                else:#基礎梁の場合
-                    if beam.i == node.no:
-                        temp += beam.eq_beam_stiff_ratio_i
-                    if beam.j == node.no:
-                        temp += beam.eq_beam_stiff_ratio_j
+                if beam.i == node.no:
+                    temp += beam.eq_beam_stiff_ratio_i
+                elif beam.j == node.no:
+                    temp += beam.eq_beam_stiff_ratio_j
+
             else:
-                if beam.category != "BB":#基礎梁以外で適用
-                    if beam.i == node.no or beam.j == node.no:
-                        temp2 += beam.stiff_ratio
-                elif beam.boundary_i == "pin" and beam.boundary_j == "fix":#i端がピン接合の場合
-                    if beam.i == node.no:
-                        temp2 += 0
-                    if beam.j == node.no:
-                        temp2 += beam.stiff_ratio *0.5
-                elif beam.boundary_i == "fix" and beam.boundary_j == "pin":#j端がピン接合の場合
-                    if beam.i == node.no:
-                        temp2 += beam.stiff_ratio *0.5
-                    if beam.j == node.no:
-                        temp2 += 0
-                elif beam.boundary_i == "pin" and beam.boundary_j == "pin":#両端がピン接合の場合
-                    if beam.i == node.no:
-                        temp2 += 0
-                    if beam.j == node.no:
-                        temp2 += 0
-                else:#基礎梁の場合
-                    if beam.i == node.no:
-                        temp2 += beam.eq_beam_stiff_ratio_i
-                    if beam.j == node.no:
-                        temp2 += beam.eq_beam_stiff_ratio_j
+                if beam.i == node.no:
+                    temp2 += beam.eq_beam_stiff_ratio_i
+                elif beam.j == node.no:
+                    temp2 += beam.eq_beam_stiff_ratio_j
 
         stiff_c_x.append(temp)
         stiff_c_y.append(temp2)
@@ -564,56 +538,20 @@ def D_method(nodes,layers,beams,columns,EE):
             if beam.i == node.no:
                 for k in node.member_no_each_node_x:
                     if beam.no == k:
-                        if beam.category != "BB":#基礎梁以外で適用
-                            temp_i_x=float(beam.stiff_ratio/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
-                        elif beam.boundary_i == "pin" and beam.boundary_j == "fix":#i端がピン接合の場合
-                            temp_i_x = 0
-                        elif beam.bounadry_i == "fix" and beam.boundary_j == "pin":#j端がピン接合の場合
-                            temp_i_x =float(beam.stiff_ratio*0.5/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
-                        elif beam.bounadry_i == "pin" and beam.boundary_j == "pin":#両端がピン接合の場合
-                            temp_i_x = 0
-                        else:#基礎梁の場合i端側の剛比を代入
-                            temp_i_x=float(beam.eq_stiff_ratio_i/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
+                        temp_i_x = float(beam.eq_beam_stiff_ratio_i/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
 
                 for k in node.member_no_each_node_y:
                     if beam.no == k:
-                        if beam.category != "BB":#基礎梁以外で適用
-                            temp_i_y=float(beam.stiff_ratio/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
-                        elif beam.boundary_i == "pin" and beam.boundary_j == "fix": #i端がピン接合の場合
-                            temp_i_y = 0
-                        elif beam.boundary_i == "fix" and beam.boundary_j == "pin": #j端がピン接合の場合
-                            temp_i_y = float(beam.stiff_ratio*0.5/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
-                        elif beam.boundary_i == "pin" and beam.boundary_j == "pin": #両端がピン接合の場合
-                            temp_i_y = 0
-                        else:#基礎梁の場合i端側の剛比を代入
-                            temp_i_y=float(beam.eq_stiff_ratio_i/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
+                        temp_i_y = float(beam.eq_beam_stiff_ratio_i/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
 
             if beam.j == node.no:#j端の算定
                 for k in node.member_no_each_node_x:
                     if beam.no == k:
-                        if beam.category != "BB":#基礎梁以外で適用
-                            temp_j_x=float(beam.stiff_ratio/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
-                        elif beam.boundary_i == "pin" and beam.boundary_j == "fix":#i端がピン接合の場合
-                            temp_j_x = 0
-                        elif beam.bounadry_i == "fix" and beam.boundary_j == "pin":#j端がピン接合の場合
-                            temp_j_x =float(beam.stiff_ratio*0.5/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
-                        elif beam.bounadry_i == "pin" and beam.boundary_j == "pin":#両端がピン接合の場合
-                            temp_j_x = 0
-                        else:#基礎梁の場合j端側の剛比を代入
-                            temp_j_x=float(beam.eq_stiff_ratio_j/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
+                        temp_j_x = float(beam.eq_beam_stiff_ratio_j/stiff_c_x[node.no-1]*node_moment_x[node.no-1])
 
                 for k in node.member_no_each_node_y:
                     if beam.no == k:
-                        if beam.category != "BB":#基礎梁以外で適用
-                            temp_j_y=float(beam.stiff_ratio/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
-                        elif beam.boundary_i == "pin" and beam.boundary_j == "fix":#i端がピン接合の場合
-                            temp_j_y = 0
-                        elif beam.bounadry_i == "fix" and beam.boundary_j == "pin":#j端がピン接合の場合
-                            temp_j_y =float(beam.stiff_ratio*0.5/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
-                        elif beam.bounadry_i == "pin" and beam.boundary_j == "pin":#両端がピン接合の場合
-                            temp_j_y = 0
-                        else:#基礎梁の場合j端側の剛比を代入
-                            temp_j_y= float(beam.eq_stiff_ratio_j/stiff_c_y[node.no-1]*node_moment_y[node.no-1])
+                        temp_j_y = float(beam.eq_beam_stiff_ratio_j / stiff_c_y[node.no - 1] * node_moment_y[node.no - 1])
 
         beam.M_Sx = [temp_i_x,temp_j_x]
         beam.M_Sy = [temp_i_y, temp_j_y]

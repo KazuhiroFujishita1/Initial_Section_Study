@@ -13,8 +13,10 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
     with open(file_path, 'r') as file:
         data = yaml.safe_load(file)
 
+    manual_T=0
     if data:
         St_type = data.get('StructuralType')
+        manual_T = data.get('Manual_T')
         C0 = data.get('Baseshear')
         Rt = data.get('Rt')
         Z = data.get('Z')
@@ -38,6 +40,9 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
         T = 0.03*maximum_height
     elif St_type == 'RC':
         T = 0.02*maximum_height
+
+    if manual_T != 0:
+        T = manual_T
 
     #地震荷重の算定
     for i in range(len(layers)):

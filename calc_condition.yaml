@@ -1,5 +1,6 @@
 CalcCondition: design
 StructuralType: Steel
+Manual_T: 1.38
 Baseshear: 0.2
 Rt: 1
 Z: 1
