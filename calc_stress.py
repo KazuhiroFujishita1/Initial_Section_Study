@@ -146,12 +146,12 @@ def calc_beam_deflection(beam_no,beams,EE,dir):
         if beams[i-1].category != "BB":
             if dir == "x":
                 beam_M.append(beams[i-1].M0\
-                          -np.average([beams[i-1].M_Lx[0],beams[i-1].M_Lx[1]]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
+                          -np.average([abs(beams[i-1].M_Lx[0]),abs(beams[i-1].M_Lx[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
                 delta.append(5 * beam_M[temp] / (48.0 * EE * beams[i - 1].I) * beams[i - 1].length ** 2
                                        -sum(beams[i-1].M_Lx)/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
             else:
                 beam_M.append(beams[i-1].M0\
-                          -np.average([beams[i-1].M_Ly[0],beams[i-1].M_Ly[1]]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
+                          -np.average([abs(beams[i-1].M_Ly[0]),abs(beams[i-1].M_Ly[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
                 delta.append(5 * beam_M[temp] / (48.0 * EE * beams[i - 1].I) * beams[i - 1].length ** 2
                                        -sum(beams[i-1].M_Ly)/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
 

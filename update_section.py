@@ -251,62 +251,63 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
     #必要な梁の断面係数、ウェブ断面積以上の部材をリストより選定
             filtered_list = selected_beam_list[(selected_beam_list['Zp'] * selected_beam_list['F']/beam.F > beam.required_Z/(m_to_mm**3)) &
             (selected_beam_list['H']*selected_beam_list['t1'] * selected_beam_list['F']/beam.F > beam.required_web_area/(m_to_mm**2))]
-    #さらに梁せいの制限で絞り込み（スパンの1/20以上）
-            filtered_list2 = filtered_list[(filtered_list['H']/(m_to_mm) > beam.length*1.0/20.0)]
-
-            beam.selected_section_no = float(list(filtered_list2['No'])[0])
-            beam.I = float(list(filtered_list2['Ix'])[0])  # 断面諸元の更新
-            beam.H = float(list(filtered_list2['H'])[0])
-            beam.B = float(list(filtered_list2['B'])[0])
-            beam.t1 = float(list(filtered_list2['t1'])[0])
-            beam.t2 = float(list(filtered_list2['t2'])[0])
-            beam.Z = float(list(filtered_list2['Z'])[0])
-            beam.Zp = float(list(filtered_list2['Zp'])[0])
-            beam.F = float(list(filtered_list2['F'])[0])
-
-            # 大梁のたわみ算定に基づく断面更新(ダミーの基礎梁は除く）
-            temp_no=0
-            while True:
-                if beam.direction == "X":
-                    beam.M_Lx0 = beam.M0 - np.average([beam.M_Lx[0], beam.M_Lx[1]])
-                    beam.delta_x = (5 * beam.M_Lx0 / (48.0 * EE * beam.I) * beam.length ** 2
-                                - sum(beam.M_Lx) / (16.0 * EE * beam.I) * beam.length ** 2)  # 梁中央のたわみ（未検証）
-                # 大梁たわみが1/300以上または20mm以上の場合大梁断面を更新
-                    if abs(beam.delta_x / beam.length) >= 1.0 / 300.0 or beam.delta_x > 0.02:
-                    #NGの場合梁リストから一段上げて再確認
-                        temp_no += 1
-                        beam.I = float(list(filtered_list2['Ix'])[temp_no])  # 断面諸元の更新
-                        beam.H = float(list(filtered_list2['H'])[temp_no])
-                        beam.B = float(list(filtered_list2['B'])[temp_no])
-                        beam.t1 = float(list(filtered_list2['t1'])[temp_no])
-                        beam.t2 = float(list(filtered_list2['t2'])[temp_no])
-                        beam.Z = float(list(filtered_list2['Z'])[temp_no])
-                        beam.Zp = float(list(filtered_list2['Zp'])[temp_no])
-                        beam.F = float(list(filtered_list2['F'])[temp_no])
-                        #print("Beam deflection is NG")
-                    else:
-                        print("Beam deflection is OK")
-                        break
-                else:
-                    beam.M_Ly0 = beam.M0 - np.average([beam.M_Ly[0], beam.M_Ly[1]])
-                    beam.delta_y = (5 * beam.M_Ly0 / (48.0 * EE * beam.I) * beam.length ** 2
-                                - sum(beam.M_Ly) / (16.0 * EE * beam.I) * beam.length ** 2)  # 梁中央のたわみ（未検証）
-                # 大梁たわみが1/300以下であるか確認
-                    if abs(beam.delta_y / beam.length) >= 1.0 / 300.0 or beam.delta_y > 0.02:
-                    # NGの場合梁リストから一段上げて再確認
-                        temp_no += 1
-                        beam.I = float(list(filtered_list2['Ix'])[temp_no])  # 断面諸元の更新
-                        beam.H = float(list(filtered_list2['H'])[temp_no])
-                        beam.B = float(list(filtered_list2['B'])[temp_no])
-                        beam.t1 = float(list(filtered_list2['t1'])[temp_no])
-                        beam.t2 = float(list(filtered_list2['t2'])[temp_no])
-                        beam.Z = float(list(filtered_list2['Z'])[temp_no])
-                        beam.Zp = float(list(filtered_list2['Zp'])[temp_no])
-                        beam.F = float(list(filtered_list2['F'])[temp_no])
-                        #print("Beam deflection is NG")
-                    else:
-                        print("Beam deflection is OK")
-                        break
+    # #さらに梁せいの制限で絞り込み（スパンの1/20以上）
+    #         filtered_list2 = filtered_list[(filtered_list['H']/(m_to_mm) > beam.length*1.0/20.0)]
+    #
+    #         beam.selected_section_no = float(list(filtered_list2['No'])[0])
+    #         beam.I = float(list(filtered_list2['Ix'])[0])  # 断面諸元の更新
+    #         beam.H = float(list(filtered_list2['H'])[0])
+    #         beam.B = float(list(filtered_list2['B'])[0])
+    #         beam.t1 = float(list(filtered_list2['t1'])[0])
+    #         beam.t2 = float(list(filtered_list2['t2'])[0])
+    #         beam.Z = float(list(filtered_list2['Z'])[0])
+    #         beam.Zp = float(list(filtered_list2['Zp'])[0])
+    #         beam.F = float(list(filtered_list2['F'])[0])
+    #
+    #         # 大梁のたわみ算定に基づく断面更新(ダミーの基礎梁は除く）
+    #         temp_no=0
+    #         while True:
+    #             if beam.direction == "X":
+    #                 beam.M_Lx0 = beam.M0 - np.average([beam.M_Lx[0], beam.M_Lx[1]])
+    #                 beam.delta_x = (5 * beam.M_Lx0 / (48.0 * EE * beam.I) * beam.length ** 2
+    #                             - sum(beam.M_Lx) / (16.0 * EE * beam.I) * beam.length ** 2)  # 梁中央のたわみ（未検証）
+    #             # 大梁たわみが1/300以上または20mm以上の場合大梁断面を更新
+    #                 if abs(beam.delta_x / beam.length) >= 1.0 / 300.0 or beam.delta_x > 0.02:
+    #                 #NGの場合梁リストから一段上げて再確認
+    #                     temp_no += 1
+    #                     beam.I = float(list(filtered_list2['Ix'])[temp_no])  # 断面諸元の更新
+    #                     beam.H = float(list(filtered_list2['H'])[temp_no])
+    #                     beam.B = float(list(filtered_list2['B'])[temp_no])
+    #                     beam.t1 = float(list(filtered_list2['t1'])[temp_no])
+    #                     beam.t2 = float(list(filtered_list2['t2'])[temp_no])
+    #                     beam.Z = float(list(filtered_list2['Z'])[temp_no])
+    #                     beam.Zp = float(list(filtered_list2['Zp'])[temp_no])
+    #                     beam.F = float(list(filtered_list2['F'])[temp_no])
+    #                     #print("Beam deflection is NG")
+    #                 else:
+    #                     print("Beam deflection is OK")
+    #                     break
+    #             else:
+    #                 beam.M_Ly0 = beam.M0 - np.average([beam.M_Ly[0], beam.M_Ly[1]])
+    #                 beam.delta_y = (5 * beam.M_Ly0 / (48.0 * EE * beam.I) * beam.length ** 2
+    #                             - sum(beam.M_Ly) / (16.0 * EE * beam.I) * beam.length ** 2)  # 梁中央のたわみ（未検証）
+    #             # 大梁たわみが1/300以下であるか確認
+    #                 print(abs(beam.delta_y / beam.length),beam.delta_y)
+    #                 if abs(beam.delta_y / beam.length) >= 1.0 / 300.0 or beam.delta_y >= 0.02:
+    #                 # NGの場合梁リストから一段上げて再確認
+    #                     temp_no += 1
+    #                     beam.I = float(list(filtered_list2['Ix'])[temp_no])  # 断面諸元の更新
+    #                     beam.H = float(list(filtered_list2['H'])[temp_no])
+    #                     beam.B = float(list(filtered_list2['B'])[temp_no])
+    #                     beam.t1 = float(list(filtered_list2['t1'])[temp_no])
+    #                     beam.t2 = float(list(filtered_list2['t2'])[temp_no])
+    #                     beam.Z = float(list(filtered_list2['Z'])[temp_no])
+    #                     beam.Zp = float(list(filtered_list2['Zp'])[temp_no])
+    #                     beam.F = float(list(filtered_list2['F'])[temp_no])
+    #                     #print("Beam deflection is NG")
+    #                 else:
+    #                     print("Beam deflection is OK")
+    #                     break
 
             #i.judge_b_L = sigma_b_L/(f_b/1.5)
             #i.judge_b_s = sigma_b_s/f_b
@@ -380,23 +381,23 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
     beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
     #梁せいの調整アルゴリズムの実行
-    while True:
-    #隣接グループの梁せいチェック
-        beam_height_condition, check1 = check_beam_height(nodes,beam_groups,beams)
-    #以下チェック結果がNGの場合、OKになるまで実施
-        print(beam_height_condition)
-    #ダイヤフラムの形状制約に基づく梁せいの調整
-        if check1 is False:
-            revise_beam_height(nodes,beam_groups,beams,selected_beam_list)
-        else:#OKの場合アルゴリズムのループを抜ける
-            break
-
-    # 梁断面の再グルーピング
-    temp_list = [[beams[i].no, beams[i].H, beams[i].B, beams[i].story]
-                 for i in range(len(beams))]
-    table_columns = ["No", "H", "B", "story"]
-    group_data = make_group(temp_list, table_columns, str("story"), str("H"))  # グルーピング
-    beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
+    # while True:
+    # #隣接グループの梁せいチェック
+    #     beam_height_condition, check1 = check_beam_height(nodes,beam_groups,beams)
+    # #以下チェック結果がNGの場合、OKになるまで実施
+    #     print(beam_height_condition)
+    # #ダイヤフラムの形状制約に基づく梁せいの調整
+    #     if check1 is False:
+    #         revise_beam_height(nodes,beam_groups,beams,selected_beam_list)
+    #     else:#OKの場合アルゴリズムのループを抜ける
+    #         break
+    #
+    # # 梁断面の再グルーピング
+    # temp_list = [[beams[i].no, beams[i].H, beams[i].B, beams[i].story]
+    #              for i in range(len(beams))]
+    # table_columns = ["No", "H", "B", "story"]
+    # group_data = make_group(temp_list, table_columns, str("story"), str("H"))  # グルーピング
+    # beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
     #梁断面の更新に伴う剛度の更新
     for beam in beams:

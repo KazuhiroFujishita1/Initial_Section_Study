@@ -31,6 +31,7 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
     #選定候補部材リストの読み込み
     column_list = pd.read_csv("column_list.csv",header = 0)
     beam_list = pd.read_csv("beam_list.csv",header = 0)
+    initial_beam_list = pd.read_csv("initial_beam_list.csv",header = 0)
 
     #選定モードに準じた梁リストのみ読み込む
     selected_beam_list = beam_list[beam_list['category'].str.contains(beam_select_mode,case=False, na=False)]
@@ -127,7 +128,7 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             else:
                 beam_H = temp
             # 求めた必要梁成以上を満たす梁リストを選定
-            target_row = selected_beam_list[selected_beam_list['H'] >= beam_H]
+            target_row = initial_beam_list[initial_beam_list['H'] >= beam_H]
 
             #同じ梁せいのリストから最も小さいNoのものを取り出す
             sorted_target_rows = target_row.sort_values(by='No', ascending=True)

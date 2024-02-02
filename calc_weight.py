@@ -18,7 +18,7 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
         St_type = data.get('StructuralType')
         manual_T = data.get('Manual_T')
         C0 = data.get('Baseshear')
-        Rt = data.get('Rt')
+        Tc = data.get('Tc')
         Z = data.get('Z')
     else:
         print("calclation condition can not be read.")
@@ -43,6 +43,14 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
 
     if manual_T != 0:
         T = manual_T
+
+    #振動特性係数Rtの算定
+    if T < Tc:
+        Rt = 1
+    elif Tc <= T and T<2*Tc:
+        Rt = 1-0.2*(T/Tc-1)**2
+    elif 2*Tc <= T:
+        Rt =1.6*Tc/T
 
     #地震荷重の算定
     for i in range(len(layers)):
