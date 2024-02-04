@@ -32,12 +32,13 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
     column_list = pd.read_csv("column_list.csv",header = 0)
     beam_list = pd.read_csv("beam_list.csv",header = 0)
     initial_beam_list = pd.read_csv("initial_beam_list.csv",header = 0)
+    initial_column_list = pd.read_csv("initial_column_list.csv",header = 0)
 
     #選定モードに準じた梁リストのみ読み込む
     selected_beam_list = beam_list[beam_list['category'].str.contains(beam_select_mode,case=False, na=False)]
 
     #柱部材リストの断面積によるソート
-    sorted_A_column_list = column_list.sort_values(by='A', ascending=True)
+    sorted_A_column_list = initial_column_list.sort_values(by='A', ascending=True)
 
     #経験式に基づく初期柱せいの算定(適用高さ上限45m）
     for column in columns:
@@ -50,7 +51,7 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             column_W = 300
 
         # 求めた必要梁成以上を満たす柱リストを選定
-        target_row = sorted_A_column_list[sorted_A_column_list['H'] >= column_W]
+        target_row = initial_column_list[initial_column_list['H'] >= column_W]
 
             # 同じ梁せいのリストから最も小さいNoのものを取り出す
         #sorted_target_rows = target_row.sort_values(by='No', ascending=True)
@@ -112,6 +113,13 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
         column.stiff_ratio_x = column_KX[temp]/maximum_KX
         column.stiff_ratio_y = column_KY[temp] / maximum_KY
         temp += 1
+
+    #初期選定柱断面のメモリ
+    for column in columns:
+        column.H_initial = column.H
+        column.t_initial = column.t
+        column.stiff_ratio_x_initial = column.stiff_ratio_x
+        column.stiff_ratio_y_initial = column.stiff_ratio_y
 
     #経験式に基づく初期梁せいの算定
     temp2=0
@@ -178,6 +186,15 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
     table_columns = ["No","H","B","story"]
     group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
     beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
+
+    #初期選定はり断面の出力
+    for beam in beams:
+        beam.B_initial = beam.B
+        beam.H_initial = beam.H
+        beam.t1_initial = beam.t1
+        beam.t2_initial = beam.t2
+        beam.eq_beam_stiff_ratio_i_initial = beam.eq_beam_stiff_ratio_i
+        beam.eq_beam_stiff_ratio_j_initial = beam.eq_beam_stiff_ratio_j
 
     #架構の剛性配置を整理
     for node in nodes:

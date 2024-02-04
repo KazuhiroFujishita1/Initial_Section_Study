@@ -52,4 +52,4 @@ if __name__ == "__main__":
     output_section_data(columns,beams,beam_select_mode)
 
 #全データの出力
-    # output_whole_data(columns,beams,nodes,layers)
+    output_whole_data(columns,beams,nodes,layers)

@@ -28,23 +28,51 @@ def output_whole_data(columns,beams,nodes,layers):
     with open(output_file + '.csv', mode='w',newline='',encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(['<beam_data>'])
-        writer.writerow(['No','i','j','length','I','K','eq_beam_stiff_ratio_i','eq_beam_stiff_ratio_j','phai','phai2','stiff_ratio','Ci','Cj','category','direction',
-                         'story','M0','Q0','unit_weight','weight','Z','Zp','B','H','t1','t2','init_group','boundary_i','boundary_j',
-                         'Mp','M_Lx','M_Lx0','M_Ly','M_Ly0','M_Sx','M_Sy','Q_Lx','Q_Ly','Q_Sx','Q_Sy','N_Lx',
+        writer.writerow(['No','i','j','length','I','K','initial_eq_beam_stiff_ratio_i','initial_eq_beam_stiff_ratio_j','eq_beam_stiff_ratio_i','eq_beam_stiff_ratio_j','phai','phai2','Ci','Cj','beam_category','direction',
+                         'story','M0','Q0','unit_weight','weight','Z','Zp','initial_B','initial_H','initial_t1','initial_t2','B','H','t1','t2','init_group','boundary_i','boundary_j',
+                         'Mp','M_Lx_i','M_Lx_j','M_Lx0','M_Ly_i','M_Ly_j','M_Ly0','M_Sx_i','M_Sx_j','M_Sy_i','M_Sy_j','Q_Lx_i','Q_Lx_j',
+                         'Q_Ly_i','Q_Ly_j','Q_Sx','Q_Sy','N_Lx',
                          'N_Ly','N_Sx','N_Sy','ML','QL','Ms','Qs'])
         for i in beams:
-            writer.writerow([i.no,i.i,i.j,i.length,i.I,i.K,i.eq_beam_stiff_ratio_i,i.eq_beam_stiff_ratio_j,i.pai,i.pai2,i.stiff_ratio,i.Ci,i.Cj,i.category,
-                             i.direction,i.story,i.M0,i.Q0,i.unit_weight,i.weight,i.Z,i.Zp,i.B,i.H,i.t1,i.t2,
-                             i.init_group,i.boundary_i,i.boundary_j,i.Mp,i.M_Lx,i.M_Lx0,i.M_Ly,i.M_Ly0,i.M_Sx,i.M_Sy,i.Q_Lx,i.Q_Ly,
-                             i.Q_Sx,i.Q_Sy,i.N_Lx,i.N_Ly,i.N_Sx,i.N_Sy,i.ML,i.QL,i.Ms,i.Qs])
+            writer.writerow([i.no,i.i,i.j,'{:.2f}'.format(i.length),'{:10}'.format(i.I),'{:.2f}'.format(float(i.K)),'{:.2f}'.format(i.eq_beam_stiff_ratio_i_initial),
+                             '{:.2f}'.format(i.eq_beam_stiff_ratio_j_initial),'{:.2f}'.format(i.eq_beam_stiff_ratio_i),'{:.2f}'.format(i.eq_beam_stiff_ratio_j),
+                             i.pai,i.pai2,'{:.2f}'.format(i.Ci),'{:.2f}'.format(i.Cj),i.category,
+                             i.direction,i.story,'{:.2f}'.format(i.M0),'{:.2f}'.format(i.Q0),'{:.2f}'.format(i.unit_weight),
+                             '{:.2f}'.format(i.weight),'{:10}'.format(i.Z),'{:10}'.format(i.Zp),i.B_initial,i.H_initial,i.t1_initial,
+                             i.t2_initial,i.B,i.H,i.t1,i.t2,i.init_group,i.boundary_i,i.boundary_j,i.Mp,
+                             '{:.2f}'.format(i.M_Lx[0]) if len(i.M_Lx) > 0 else '0.00',
+                             '{:.2f}'.format(i.M_Lx[1]) if len(i.M_Lx) > 0 else '0.00',
+                             '{:.2f}'.format(i.M_Lx0) if type(i.M_Lx0) is float else '0.00',
+                             '{:.2f}'.format(i.M_Ly[0]) if len(i.M_Ly) > 0 else '0.00'
+                             ,'{:.2f}'.format(i.M_Ly[1]) if len(i.M_Ly) > 0 else '0.00',
+                             '{:.2f}'.format(i.M_Ly0) if type(i.M_Ly0) is float else '0.00',
+                             '{:.2f}'.format(i.M_Sx[0]) if len(i.M_Sx) > 0 else '0.00',
+                             '{:.2f}'.format(i.M_Sx[1]) if len(i.M_Sx) > 0 else '0.00',
+                             '{:.2f}'.format(i.M_Sy[0]) if len(i.M_Sy) > 0 else '0.00',
+                             '{:.2f}'.format(i.M_Sy[1]) if len(i.M_Sy) > 0 else '0.00',
+                             '{:.2f}'.format(i.Q_Lx[0]) if len(i.Q_Lx) > 0 else '0.00',
+                             '{:.2f}'.format(i.Q_Lx[1]) if len(i.Q_Lx) > 0 else '0.00',
+                             '{:.2f}'.format(i.Q_Ly[0]) if len(i.Q_Ly) > 0 else '0.00',
+                             '{:.2f}'.format(i.Q_Ly[1]) if len(i.Q_Ly) > 0 else '0.00',
+                            '{:.2f}'.format(i.Q_Sx),
+                             '{:.2f}'.format(i.Q_Sy),
+                             '{:.2f}'.format(i.N_Lx) if len(i.N_Lx) > 0 else '0.00',
+                             '{:.2f}'.format(i.N_Ly) if len(i.N_Ly) > 0 else '0.00',
+                             '{:.2f}'.format(i.N_Sx) if len(i.N_Sx) > 0 else '0.00',
+                             '{:.2f}'.format(i.N_Sy) if len(i.N_Sy) > 0 else '0.00',
+                             '{:.2f}'.format(i.ML),
+                             '{:.2f}'.format(i.QL),
+                             '{:.2f}'.format(i.Ms),
+                             '{:.2f}'.format(i.Qs)])
+
         writer.writerow(['<column_data>'])
-        writer.writerow(['No','i','j','story','length','A','Ix','Iy','Z','Zp','H','t','stiff_ratio_x','stiff_ratio_y','F',
+        writer.writerow(['No','i','j','story','length','A','Ix','Iy','Z','Zp','initial_H','initial_t','initial_stiff_ratio_x','initial_stiff_ratio_y','H','t','stiff_ratio_x','stiff_ratio_y','F',
                          'base_K','load_area','init_group','Mpx','Mpy','unit_weight','weight','D_x','D_y','M_Lx','M_Ly',
                          'M_Sx','M_Sy','Q_Lx','Q_Ly','Q_Sx','Q_Sy','N_Lx','N_Ly','N_Sx','N_Sy','MLx','MLy','QLx','QLy',
                          'NL','MSx','MSy','QSx','QSy','NSx','NSy','required_area','decrement_ratio_x','decrement_ratio_y',
                          'minimum_selected_section_no','tc1','tc2x','tc2y','tc'])
         for i in columns:
-            writer.writerow([i.no,i.i,i.j,i.story,i.length,i.A,i.Ix,i.Iy,i.Z,i.Zp,i.H,i.t,i.stiff_ratio_x,i.stiff_ratio_y,
+            writer.writerow([i.no,i.i,i.j,i.story,i.length,i.A,i.Ix,i.Iy,i.Z,i.Zp,i.H_initial,i.t_initial,i.stiff_ratio_x_initial,i.stiff_ratio_y_initial,i.H,i.t,i.stiff_ratio_x,i.stiff_ratio_y,
                              i.F,i.base_K,i.load_area,i.init_group,i.Mpx,i.Mpy,i.unit_weight,i.weight,i.D_x,i.D_y,i.M_Lx,i.M_Ly,
                              i.M_Sx,i.M_Sy,i.Q_Lx,i.Q_Ly,i.Q_Sx,i.Q_Sy,i.N_Lx,i.N_Ly,i.N_Sx,i.N_Sy,i.MLx,i.MLy,i.QLx,i.QLy,i.NL,
                              i.MSx,i.MSy,i.QSx,i.QSy,i.NSx,i.NSy,i.required_area,i.decrement_ratio_x,i.decrement_ratio_y,

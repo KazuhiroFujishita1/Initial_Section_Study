@@ -134,6 +134,13 @@ class Beam():
         self.t1 = []
         self.t2 = []
 
+        self.B_initial = []#H型鋼の初期選定断面
+        self.H_initial = []
+        self.t1_initial = []
+        self.t2_initial = []
+        self.eq_beam_stiff_ratio_i_initial = [] #i端側の柱に考慮する等価な基礎梁剛比
+        self.eq_beam_stiff_ratio_j_initial = [] #j端側の柱に考慮する等価な基礎梁剛比
+
         self.init_group = []#初期断面のグルーピング
 
         self.Mp = []#選択された部材の全塑性モーメント
@@ -194,8 +201,12 @@ class Column():
         self.Zp = []
         self.H = []
         self.t = []
+        self.H_initial = []
+        self.t_initial = []
         self.stiff_ratio_x = []#stiff_ratio_x#剛比
         self.stiff_ratio_y = []#stiff_ratio_y
+        self.stiff_ratio_x_initial = []#初期断面の剛比
+        self.stiff_ratio_y_initial = []
         self.F = []#FF
         self.base_K = [] #柱せいより決まる等価な基礎梁剛度
         self.load_area = load_area #柱の負担面積

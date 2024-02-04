@@ -170,8 +170,7 @@ def calc_beam_shear(temp2,Q0_temp,length):
     
 #柱のせんだん力算定
 def calc_column_shear(temp2,length):
-    column_shear = [(abs(temp2[0])+abs(temp2[1]))/length,
-                               (abs(temp2[0])+abs(temp2[1]))/length]
+    column_shear = [(temp2[0]+temp2[1])/length,(temp2[0]+temp2[1])/length]
     return column_shear
 
 #固定モーメント法による長期荷重の算定(鹿島様受領Excel（固定モーメント法）の通り）
