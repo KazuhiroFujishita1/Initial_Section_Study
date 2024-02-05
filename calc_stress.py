@@ -138,7 +138,7 @@ def moment_sum(FEM,D1,C1,D2,temp):
         sigma_moment = np.array(D1[temp])+np.array(C1[temp])+np.array(D2[temp])#+np.array(C2[temp])
     return sigma_moment
 
-#梁たわみ算定
+#梁たわみ算定（とりあえず両端固定の境界条件で考えている）
 def calc_beam_deflection(beam_no,beams,EE,dir):
     beam_M=[];delta=[]
     temp=0
@@ -524,12 +524,26 @@ def D_method(nodes,layers,beams,columns,EE):
     for beam in beams:
         temp_i_x=0;temp_j_x=0
         temp_i_y=0;temp_j_y=0
+        print(stiff_c_x[beam.i-1],stiff_c_y[beam.i-1])
         if beam.direction == "X":
-            temp_i_x = float(beam.eq_beam_stiff_ratio_i/stiff_c_x[beam.i-1]*node_moment_x[beam.i-1])
-            temp_j_x = float(beam.eq_beam_stiff_ratio_j/stiff_c_x[beam.j-1]*node_moment_x[beam.j-1])
+            if stiff_c_x[beam.i-1] != 0:
+                temp_i_x = float(beam.eq_beam_stiff_ratio_i/stiff_c_x[beam.i-1]*node_moment_x[beam.i-1])
+            else:#i端にとりつく梁の剛性和が0の場合
+                temp_i_x = 0
+            if stiff_c_x[beam.j-1] != 0:
+                temp_j_x = float(beam.eq_beam_stiff_ratio_j/stiff_c_x[beam.j-1]*node_moment_x[beam.j-1])
+            else:#j端にとりつく梁の剛性和が0の場合
+                temp_j_x = 0
+
         else:
-            temp_i_y = float(beam.eq_beam_stiff_ratio_i/stiff_c_y[beam.i-1]*node_moment_y[beam.i-1])
-            temp_j_y = float(beam.eq_beam_stiff_ratio_j/stiff_c_y[beam.j-1]*node_moment_y[beam.j-1])
+            if stiff_c_y[beam.i-1] != 0:
+                temp_i_y = float(beam.eq_beam_stiff_ratio_i/stiff_c_y[beam.i-1]*node_moment_y[beam.i-1])
+            else:#i端にとりつく梁の剛性和が0の場合
+                temp_i_y = 0
+            if stiff_c_y[beam.j-1] != 0:
+                temp_j_y = float(beam.eq_beam_stiff_ratio_j/stiff_c_y[beam.j-1]*node_moment_y[beam.j-1])
+            else:#j端にとりつく梁の剛性和が0の場合
+                temp_j_y = 0
 
         beam.M_Sx = [temp_i_x,temp_j_x]
         beam.M_Sy = [temp_i_y, temp_j_y]
