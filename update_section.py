@@ -2,6 +2,7 @@ import math
 import pandas as pd
 import numpy as np
 import itertools
+import calc_stress
 from member_class import *
 from set_initial_section import *
 
@@ -658,6 +659,10 @@ def calc_limit_column_size(nodes,layers,columns,beams,EE):
             column.Zp = "Error"
             column.F = "Error"
 
+        #柱の剛度の算定(単位cm3）
+        column.KX = column.Ix/column.length*1000000.0
+        column.KY = column.Iy/column.length*1000000.0
+
 #応力に基づく柱断面の必要板厚の算定
 def calc_column_thickness(columns):
 
@@ -708,9 +713,15 @@ def calc_column_thickness(columns):
                 column.Iy = ((column.H)**4-(column.H-column.t*2)**4)/12.0/m_to_mm**4
                 column.Z = ((column.H)**4-(column.H-column.t*2)**4)/(6*column.H)/m_to_mm**3
 
+        #柱の剛度の算定(単位cm3）
+            column.KX = column.Ix/column.length*1000000.0
+            column.KY = column.Iy/column.length*1000000.0
+
 #柱断面を長期・短期応力評価結果に基づいて更新
 def update_column_section(nodes,beams,columns,layers,EE):
     #剛性チェック、柱梁耐力比に基づく必要最低柱断面の算定
     calc_limit_column_size(nodes,layers,columns,beams,EE)
     #応力に基づく柱断面の必要板厚の算定
     calc_column_thickness(columns)
+    #更新後断面における剛比算定
+    calc_stress.calc_stiffness_ratio(columns,beams,nodes)

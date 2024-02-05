@@ -93,6 +93,24 @@ def detect_connection(nodes,beams,columns):
         node.member_no_each_node2_x = temp4_x+temp2_x#全部材を通し番号で整理（基礎梁含む）
         node.member_no_each_node2_y = temp4_y+temp2_y#全部材を通し番号で整理（基礎梁含む）
 
+#更新後断面における剛比算定
+def calc_stiffness_ratio(columns,beams,nodes):
+    #柱断面の最大剛度を探索
+    max_K = 0
+    for column in columns:
+        if column.KX >= max_K:
+            max_K = column.KX
+    #柱の最大剛度を基準に各部材の剛比を算定
+    for column in columns:
+        column.stiff_ratio_x = column.KX/max_K
+        column.stiff_ratio_y = column.KY/max_K
+    for beam in beams:
+        if beam.category != "BB":  # 基礎梁以外
+            beam.stiff_ratio = beam.K/max_K
+    
+    #梁種別、梁端条件に応じた等価剛比の格納
+    calc_eq_beam_stiffness(beams,columns,nodes)
+
 #梁部材について基礎梁か否か、また梁端境界条件に応じた等価剛比を格納
 def calc_eq_beam_stiffness(beams,columns,nodes):
     #単位変換用係数

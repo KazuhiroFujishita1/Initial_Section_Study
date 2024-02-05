@@ -74,7 +74,6 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
 
     #長期軸力に関する軸力比のクライテリアから考えうる必要な柱断面積の算定
     column_area = map(lambda i: [sorted_A_column_list['A'][i]], range(len(sorted_A_column_list)))
-    column_KX =[];column_KY =[]
     for column in columns:
         column.required_area = column.N_Lx*kN_to_N/(0.4*column.F)#長期軸力比を0.4とする場合の必要断面積
         #柱リストより得られた各諸元以上のキャパシティを有する柱断面の選定
@@ -96,8 +95,8 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             column.F = float(list(filtered_data['F'])[0])
 
         #柱の剛度の算定(単位cm3）
-        column_KX.append(column.Ix/column.length*1000000.0)
-        column_KY.append(column.Iy/column.length*1000000.0)
+        column.KX = column.Ix/column.length*1000000.0
+        column.KY = column.Iy/column.length*1000000.0
 
     #初期柱断面のグルーピング
     temp_list = map(lambda i:[columns[i].no,columns[i].H,columns[i].t,columns[i].story],range(len(columns)))
@@ -105,26 +104,9 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
     group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
     column_groups = [member_class.Column_Group(*data) for data in group_data]  # グループのインスタンス定義
 
-    # 柱の剛比算定（柱の剛度の最大値を標準剛度とみなし1とする）
-    maximum_KX = max(column_KX)
-    maximum_KY = max(column_KY)
-    temp = 0
-    for column in columns:
-        column.stiff_ratio_x = column_KX[temp]/maximum_KX
-        column.stiff_ratio_y = column_KY[temp] / maximum_KY
-        temp += 1
-
-    #初期選定柱断面のメモリ
-    for column in columns:
-        column.H_initial = column.H
-        column.t_initial = column.t
-        column.stiff_ratio_x_initial = column.stiff_ratio_x
-        column.stiff_ratio_y_initial = column.stiff_ratio_y
-
     #経験式に基づく初期梁せいの算定
     temp2=0
     #等価な基礎梁の断面二次モーメント
-    II = 3240000000#800×900の基礎梁断面
     for beam in beams:
         if beam.category != "BB":#基礎梁以外で適用
             temp = beam.length*m_to_mm/18.0#鹿島様略算式
@@ -163,7 +145,6 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             beam.unit_weight = float(list(sorted_target_rows['unit_m'])[0]*9.80665/m_to_mm)
             beam.weight = beam.unit_weight * beam.length  # 部材自重
 
-            beam.stiff_ratio = beam.K/maximum_KX
             temp2 += 1
 
         #基礎梁の場合、選択した柱のせいより決まる剛度を設定
@@ -178,16 +159,22 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             beam.Zp = 0
             beam.F = 0
 
-    #梁種別、梁端条件に応じた等価剛比の格納
-    calc_stress.calc_eq_beam_stiffness(beams,columns,nodes)
-
     #初期梁断面のグルーピング
     temp_list = map(lambda i: [beams[i].no, beams[i].H, beams[i].B, beams[i].story], range(len(beams)))
     table_columns = ["No","H","B","story"]
     group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
     beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
-    #初期選定はり断面の出力
+    #柱梁の剛比算定
+    calc_stress.calc_stiffness_ratio(columns,beams,nodes)
+
+    #初期選定柱断面のメモリー
+    for column in columns:
+        column.H_initial = column.H
+        column.t_initial = column.t
+        column.stiff_ratio_x_initial = column.stiff_ratio_x
+        column.stiff_ratio_y_initial = column.stiff_ratio_y
+    #初期選定はり断面のメモリー
     for beam in beams:
         beam.B_initial = beam.B
         beam.H_initial = beam.H
