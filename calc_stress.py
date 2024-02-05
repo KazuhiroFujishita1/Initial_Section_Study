@@ -131,11 +131,11 @@ def distribute_moment(node_moment):
     return myu_temp
     
 #モーメントの和の算定
-def moment_sum(FEM,D1,C1,D2,C2,temp):
+def moment_sum(FEM,D1,C1,D2,temp):
     if len(FEM) != 0:
-        sigma_moment = np.array(FEM[temp])+np.array(D1[temp])+np.array(C1[temp])+np.array(D2[temp])+np.array(C2[temp])
+        sigma_moment = np.array(FEM[temp])+np.array(D1[temp])+np.array(C1[temp])+np.array(D2[temp])#+np.array(C2[temp])
     else:
-        sigma_moment = np.array(D1[temp])+np.array(C1[temp])+np.array(D2[temp])+np.array(C2[temp])
+        sigma_moment = np.array(D1[temp])+np.array(C1[temp])+np.array(D2[temp])#+np.array(C2[temp])
     return sigma_moment
 
 #梁たわみ算定
@@ -144,16 +144,18 @@ def calc_beam_deflection(beam_no,beams,EE,dir):
     temp=0
     for i in beam_no:
         if beams[i-1].category != "BB":
-            if dir == "x":
+            if dir == "X":
                 beam_M.append(beams[i-1].M0\
                           -np.average([abs(beams[i-1].M_Lx[0]),abs(beams[i-1].M_Lx[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
                 delta.append(5 * beam_M[temp] / (48.0 * EE * beams[i - 1].I) * beams[i - 1].length ** 2
                                        -sum(beams[i-1].M_Lx)/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
-            else:
+            elif dir == "Y":
                 beam_M.append(beams[i-1].M0\
                           -np.average([abs(beams[i-1].M_Ly[0]),abs(beams[i-1].M_Ly[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
                 delta.append(5 * beam_M[temp] / (48.0 * EE * beams[i - 1].I) * beams[i - 1].length ** 2
                                        -sum(beams[i-1].M_Ly)/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
+            else:#XY方向以外の場合例外エラー
+                "Error:calc of beam deflection."
 
         else:#基礎梁の場合、とりあえず0に
             beam_M.append(0)
@@ -217,32 +219,32 @@ def fixed_moment_method(nodes,beams,columns,EE):
     D2_x,C2_x,C2_sum_x = calc_moment(C1_sum_x,member_no_each_node2_x_dict,myu_x,nodes,beams,columns,beam_no_x)
     D2_y,C2_y,C2_sum_y = calc_moment(C1_sum_y,member_no_each_node2_y_dict,myu_y,nodes,beams,columns,beam_no_y)
 
-#各部材ごとにモーメントの和の算定(C2まで計算する）
+#各部材ごとにモーメントの和の算定(D2まで計算する(受領Excelに整合させる））
     temp = 0
     for i in beam_no_x:
-        beams[i-1].M_Lx = moment_sum(FEM1_x,D1_x,C1_x,D2_x,C2_x,temp)#固定モーメント法の解
+        beams[i-1].M_Lx = moment_sum(FEM1_x,D1_x,C1_x,D2_x,temp)#固定モーメント法の解
         temp +=1
     for column in columns:
-        column.M_Lx = moment_sum("",D1_x,C1_x,D2_x,C2_x,temp)#固定モーメント法の解
+        column.M_Lx = moment_sum("",D1_x,C1_x,D2_x,temp)#固定モーメント法の解
         temp +=1
 
     temp = 0
     for i in beam_no_y:
-        beams[i-1].M_Ly = moment_sum(FEM1_y,D1_y,C1_y,D2_y,C2_y,temp)#固定モーメント法の解
+        beams[i-1].M_Ly = moment_sum(FEM1_y,D1_y,C1_y,D2_y,temp)#固定モーメント法の解
         temp += 1
     for column in columns:
-        column.M_Ly = moment_sum("",D1_y,C1_y,D2_y,C2_y,temp)#固定モーメント法の解
+        column.M_Ly = moment_sum("",D1_y,C1_y,D2_y,temp)#固定モーメント法の解
         temp += 1
 
 #各部材ごとに大梁のたわみ算定(ダミーの基礎梁は除く）
-    beam_M_x, delta_x = calc_beam_deflection(beam_no_x,beams,EE,"x")
+    beam_M_x, delta_x = calc_beam_deflection(beam_no_x,beams,EE,"X")
     temp = 0
     for i in beam_no_x:
         beams[i-1].M_Lx0 = beam_M_x[temp]
         beams[i-1].delta_x = delta_x[temp]
         temp +=1
 
-    beam_M_y, delta_y = calc_beam_deflection(beam_no_y,beams,EE,"y")
+    beam_M_y, delta_y = calc_beam_deflection(beam_no_y,beams,EE,"Y")
     temp = 0
     for i in beam_no_y:
         beams[i-1].M_Ly0 = beam_M_y[temp]
@@ -598,7 +600,7 @@ def D_method(nodes,layers,beams,columns,EE):
         layer.horizontal_disp_y = layer.shear_force_y*kN_to_N/layer.D_sum_y*(layer.height*m_to_mm)**2/12.0/(EE/1000.0)/10**5
         layer.horizontal_angle_x = 1.0/(layer.horizontal_disp_x/layer.height/m_to_mm)
         layer.horizontal_angle_y = 1.0/(layer.horizontal_disp_y/layer.height/m_to_mm)
-        temp +=1
+        temp += 1
 
 #柱梁の長期・短期荷重の算定
 def load_calc(beams,columns):

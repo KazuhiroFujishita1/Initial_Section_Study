@@ -35,10 +35,13 @@ def read_model():
         dist_load = beam_load_i*12.0/beam_length**2
 
         #梁の方向判定
-        if round(nodes[df2['i_point'][i] - 1].x,1) == round(nodes[df2['j_point'][i] - 1].x,1):
+        if round(nodes[df2['i_point'][i] - 1].y,1) == round(nodes[df2['j_point'][i] - 1].y,1):
             beam_direction="X"
-        else:
+        elif round(nodes[df2['i_point'][i] - 1].x,1) == round(nodes[df2['j_point'][i] - 1].x,1):
             beam_direction="Y"
+        else:
+            print("Error:beam is not on xy grid.")
+
         beam_data.append((df2['no'][i],df2['i_point'][i],df2['j_point'][i],beam_length,
                           dist_load,beam_load_i,beam_load_j,df2['category'][i],beam_direction,df2['phi'][i],df2['phi2'][i],M0,Q0,df2['story'][i],df2['boundary_i'][i],df2['boundary_j'][i]))
 
@@ -262,6 +265,11 @@ class Column():
 
         self.temp_axial_column_x = []
         self.temp_axial_column_y = []
+
+        self.temp_axial_column_x_Mp = []#両端ヒンジ時の柱軸力
+        self.temp_axial_column_y_Mp = []
+        self.axial_column_x_Mp = []
+        self.axial_column_y_Mp = []
 
     # 層のクラス
 class Layer():
