@@ -1,0 +1,105 @@
+
+
+<!DOCTYPE HTML>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title></title>
+<!-- UIkit CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.17.11/dist/css/uikit.min.css" />
+
+<!-- UIkit JS -->
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.17.11/dist/js/uikit.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/uikit@3.17.11/dist/js/uikit-icons.min.js"></script>
+<script type="text/javascript" src="./config.js"></script>
+<script type="text/javascript" src="./main.js"></script>
+  
+</head>
+
+<body>
+    <div style="margin: 25px;">
+        <div id="myapp"></div>
+    </div>
+</body>
+
+<script type="text/javascript">
+
+let width = (window.innerWidth - 200.0) * 0.8; 
+let height = window.innerHeight * 0.8; 
+
+
+let app;
+fetch("./drawing/flags.json")
+.then(res => res.json())
+.then(flags => {
+
+    flags.config.centerX = 0.5 * width;
+    flags.config.centerY = 0.5 * height;
+    flags.config.width   = width;
+    flags.config.height  = height;
+
+    app = Elm.Main.init({
+        node: document.getElementById('myapp'),
+        flags: flags  
+    });
+
+});
+
+
+/*
+var app = Elm.Main.init({
+    node: document.getElementById('myapp'),
+    flags: {"config": _config,
+     "entities": { 
+     "layers":[ 
+     { "lines": [], 
+       "circles": [],
+       "rectangles": [],
+       "polygons": [],
+       "scalableCircles": [],
+       "contourLines": [],
+       "contourPolygons": [],
+       "momentLines": [],
+       "texts": [],
+       "lineTexts": []
+     } ], 
+     "xaxes":[], 
+     "yaxes":[]},
+    "tree": [
+           { "path": "sample1.json",
+             "displayName" : "sample1",
+             "labelNames" : [ "01" ]  }, 
+           { "path": "sample2.json",
+             "displayName" : "sample2",
+             "labelNames" : [ "02" ]  } 
+
+    ],
+    "labels" : [ 
+      { "no" : 1, "name" : "01" },
+      { "no" : 2, "name" : "02" },
+    ],
+    "tags" : [
+        { "key" : "moment", 
+          "displayName" : "Moment", 
+          "activated" : true },
+        { "key" : "shear", 
+          "displayName" : "Shear", 
+          "activated" : true },
+        { "key" : "axial", 
+          "displayName" : "Axial", 
+          "activated" : true }
+    ] } 
+});
+*/
+
+/*
+app.ports.requestToStorage.subscribe(function(key) {
+  app.ports.storageReceiver.send(_storage[ key ]);
+});
+*/
+
+
+</script>
+
+</html>
