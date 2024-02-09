@@ -165,13 +165,14 @@ def calc_beam_deflection(beam_no,beams,EE,dir):
             if dir == "X":
                 beam_M.append(beams[i-1].M0\
                           -np.average([abs(beams[i-1].M_Lx[0]),abs(beams[i-1].M_Lx[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
-                delta.append(5 * beam_M[temp] / (48.0 * EE * beams[i - 1].I) * beams[i - 1].length ** 2
-                                       -sum(beams[i-1].M_Lx)/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
+                delta.append(5 * beams[i-1].M0 / (48.0 * EE * beams[i - 1].I) * beams[i - 1].length ** 2
+                                       -(abs(beams[i-1].M_Lx[0])+abs(beams[i-1].M_Lx[1]))/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
+
             elif dir == "Y":
                 beam_M.append(beams[i-1].M0\
                           -np.average([abs(beams[i-1].M_Ly[0]),abs(beams[i-1].M_Ly[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
-                delta.append(5 * beam_M[temp] / (48.0 * EE * beams[i - 1].I) * beams[i - 1].length ** 2
-                                       -sum(beams[i-1].M_Ly)/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
+                delta.append(5 * beams[i-1].M0 / (48.0 * EE * beams[i - 1].I) * beams[i - 1].length ** 2
+                                       -(abs(beams[i-1].M_Ly[0])+abs(beams[i-1].M_Ly[1]))/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
             else:#XY方向以外の場合例外エラー
                 "Error:calc of beam deflection."
 
@@ -202,10 +203,12 @@ def fixed_moment_method(nodes,beams,columns,EE):
     myu_x =[];myu_y=[]
     FEM_sum_x=np.zeros(int((len(nodes))))
     FEM_sum_y=np.zeros(int((len(nodes))))
+    temp=0
     for node in nodes:
     #モーメント分担率の算定
         myu_x.append(distribute_moment(node.node_member_stiff2_x))
         myu_y.append(distribute_moment(node.node_member_stiff2_y))
+        temp+=1
 
 #各節点の梁の固定端モーメントの算定（1回目）
     FEM1_x = [];FEM1_y = [];beam_no_x=[];beam_no_y=[]
@@ -254,20 +257,33 @@ def fixed_moment_method(nodes,beams,columns,EE):
         column.M_Ly = moment_sum("",D1_y,C1_y,D2_y,temp)#固定モーメント法の解
         temp += 1
 
+#最下部の柱端のみC2を変える処理
+    for column in columns:
+        for node in nodes:  # 最下部（z=0)となる柱端のみC2を変える処理
+            if node.no == column.i:
+                if node.z == 0:
+                    column.M_Lx[0] = column.M_Lx[1] / 2
+                    column.M_Ly[0] = column.M_Ly[1] / 2
+            if node.no == column.j:
+                if node.z == 0:
+                    column.M_Lx[1] = column.M_Lx[0] / 2
+                    column.M_Ly[1] = column.M_Ly[0] / 2
+
 #各部材ごとに大梁のたわみ算定(ダミーの基礎梁は除く）
     beam_M_x, delta_x = calc_beam_deflection(beam_no_x,beams,EE,"X")
     temp = 0
     for i in beam_no_x:
         beams[i-1].M_Lx0 = beam_M_x[temp]
         beams[i-1].delta_x = delta_x[temp]
-        temp +=1
+        temp += 1
 
     beam_M_y, delta_y = calc_beam_deflection(beam_no_y,beams,EE,"Y")
     temp = 0
     for i in beam_no_y:
         beams[i-1].M_Ly0 = beam_M_y[temp]
         beams[i-1].delta_y = delta_y[temp]
-        temp +=1
+        temp += 1
+    #print(beam_M_y)
 
     # 梁のせん断力の算定
     #X方向
@@ -363,13 +379,13 @@ def calc_shear_slope(column_story,kk_temp,alpha1,alpha2,alpha3,maximum_story):
 #反曲点高比の算定
     yy = y0 + y1 + y2 + y3
 
-    return yy
+    return y0,y1,y2,y3,yy
 
 #D値の算定
 def calc_D(nodes,columns,beams,layers,direction,D_sum):
     kk=[];a=[];D=[]
     alpha1 = [];alpha2=[]; alpha3=[]; yy=[]
-
+    tttt = 0
     for column in columns:
         if direction == "X":
             temp = nodes[column.i - 1].beam_no_each_node2_x  # i端部材no
@@ -450,8 +466,27 @@ def calc_D(nodes,columns,beams,layers,direction,D_sum):
 
     #各柱の反曲点高比の算定
         maximum_story = layers[0].story
-        yy_temp = calc_shear_slope(column.story,kk_temp,alpha1[column.no-1],alpha2[column.no-1],alpha3[column.no-1],maximum_story)
+        y0_temp, y1_temp, y2_temp, y3_temp, yy_temp = calc_shear_slope(column.story,kk_temp,alpha1[column.no-1],alpha2[column.no-1],alpha3[column.no-1],maximum_story)
         yy.append(yy_temp)
+
+    #D値法の諸元出力
+        if direction =="X":
+            column.y0_x = y0_temp
+            column.y1_x = y1_temp
+            column.y2_x = y2_temp
+            column.y3_x = y3_temp
+        elif direction == "Y":
+            column.y0_y = y0_temp
+            column.y1_y = y1_temp
+            column.y2_y = y2_temp
+            column.y3_y = y3_temp
+        else:
+            "Error: No direction on the calc y."
+
+        column.kk = kk[tttt]
+        column.a = a[tttt]
+
+        tttt += 1
 
     return D,D_sum,yy
 
@@ -542,7 +577,6 @@ def D_method(nodes,layers,beams,columns,EE):
     for beam in beams:
         temp_i_x=0;temp_j_x=0
         temp_i_y=0;temp_j_y=0
-        print(stiff_c_x[beam.i-1],stiff_c_y[beam.i-1])
         if beam.direction == "X":
             if stiff_c_x[beam.i-1] != 0:
                 temp_i_x = float(beam.eq_beam_stiff_ratio_i/stiff_c_x[beam.i-1]*node_moment_x[beam.i-1])
@@ -570,7 +604,6 @@ def D_method(nodes,layers,beams,columns,EE):
         beam.Q_Sy = (beam.M_Sy[0]+beam.M_Sy[1])/beam.length
 
     #各柱の軸力算定
-
     for column in columns:
             #各柱にとりつく梁のせん断力から想定される軸力を算定
         if nodes[column.i-1].z > nodes[column.j-1].z:  # 上はりの剪断力を参照
@@ -585,12 +618,12 @@ def D_method(nodes,layers,beams,columns,EE):
         if len(temp) == 1:
             column.temp_axial_column_x = beams[temp[0]-1].Q_Sx
         elif len(temp) == 2:
-            column.temp_axial_column_x = abs(beams[temp[0]-1].Q_Sx-beams[temp[1]-1].Q_Sx)
+            column.temp_axial_column_x = beams[temp[0]-1].Q_Sx-beams[temp[1]-1].Q_Sx
 
         if len(temp2) == 1:
             column.temp_axial_column_y = beams[temp2[0]-1].Q_Sy
         elif len(temp2) == 2:
-            column.temp_axial_column_y = abs(beams[temp2[0]-1].Q_Sy-beams[temp2[1]-1].Q_Sy)
+            column.temp_axial_column_y = beams[temp2[0]-1].Q_Sy-beams[temp2[1]-1].Q_Sy
 
         #上の層の柱の軸力から順に足す
     D_sum_x =np.zeros(len(layers))
@@ -608,14 +641,14 @@ def D_method(nodes,layers,beams,columns,EE):
                 for j in temp:
                     if j != column.no:#自分以外の柱がある場合その柱の軸力を足す
                         column.N_Sx = column.temp_axial_column_x+columns[j-1].temp_axial_column_x
-                        column.temp_axial_column_x += columns[j-1].temp_axial_column_x #該当する柱の仮の軸力も更新する
+                        column.temp_axial_column_x = column.N_Sx #該当する柱の仮の軸力も更新する
                     else:
                         column.N_Sx = column.temp_axial_column_x
 
                 for j in temp2:
                     if j != column.no:  # 自分以外の柱がある場合その柱の軸力を足す
                         column.N_Sy = column.temp_axial_column_y+ columns[j- 1].temp_axial_column_y
-                        column.temp_axial_column_y += columns[j-1].temp_axial_column_y #該当する柱の仮の軸力も更新する
+                        column.temp_axial_column_y = column.N_Sy #該当する柱の仮の軸力も更新する
                     else:
                         column.N_Sy = column.temp_axial_column_y
 
@@ -640,13 +673,13 @@ def load_calc(beams,columns):
     for beam in beams:
         if beam.direction == "X":
             beam.ML = max(abs(beam.M_Lx[0]),abs(beam.M_Lx[1]),abs(beam.M_Lx0))
-            beam.QL = abs(beam.Q_Lx[0])
+            beam.QL = max(abs(beam.Q_Lx[0]),abs(beam.Q_Lx[1]))
             #中央及び端部の最大値として算定
             beam.Ms = max(abs(beam.M_Lx0),abs(beam.M_Sx[0])+abs(beam.M_Lx[0]),abs(beam.M_Sx[1])+abs(beam.M_Lx[1]))
             beam.Qs = max(abs(beam.Q_Lx[0]),abs(beam.Q_Lx[1]))+beam.Q_Sx
         else:
             beam.ML = max(abs(beam.M_Ly[0]),abs(beam.M_Ly[1]),abs(beam.M_Ly0))
-            beam.QL = abs(beam.Q_Ly[0])
+            beam.QL = max(abs(beam.Q_Ly[0]),abs(beam.Q_Ly[1]))
             #中央及び端部の最大値として算定
             beam.Ms = max(abs(beam.M_Ly0),abs(beam.M_Sy[0])+abs(beam.M_Ly[0]),abs(beam.M_Sy[1])+abs(beam.M_Ly[1]))
             beam.Qs = max(abs(beam.Q_Ly[0]),abs(beam.Q_Ly[1]))+beam.Q_Sy
@@ -659,9 +692,9 @@ def load_calc(beams,columns):
         column.QLy = column.Q_Ly[0]
         column.NL = column.N_Lx
         column.MSx = column.MLx + max(abs(column.M_Sx[0]),abs(column.M_Sx[1]))
-        column.QSx = column.QLx + column.Q_Sx
+        column.QSx = abs(column.QLx) + column.Q_Sx
         column.NSx = column.NL + abs(column.N_Sx)
         column.NSy = column.NL + abs(column.N_Sy)
         column.MSy = column.MLy + max(abs(column.M_Sy[0]),abs(column.M_Sy[1]))
-        column.QSy = column.QLy + column.Q_Sy
+        column.QSy = abs(column.QLy) + column.Q_Sy
 

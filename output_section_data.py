@@ -84,7 +84,8 @@ def output_whole_data(columns,beams,nodes,layers):
                          'B(mm)','H(mm)','t1(mm)','t2(mm)','init_group','boundary_i','boundary_j',
                          'Mp(kNm)','M_Lx_i(kNm)','M_Lx_j(kNm)','M_Lx0(kNm)','M_Ly_i(kNm)','M_Ly_j(kNm)','M_Ly0(kNm)','M_Sx_i(kNm)','M_Sx_j(kNm)','M_Sy_i(kNm)','M_Sy_j(kNm)','Q_Lx_i(kN)','Q_Lx_j(kN)',
                          'Q_Ly_i(kN)','Q_Ly_j(kN)','Q_Sx(kN)','Q_Sy(kN)','N_Lx(kN)',
-                         'N_Ly(kN)','N_Sx(kN)','N_Sy(kN)','ML(kNm)','QL(kN)','Ms(kNm)','Qs(kN)'])
+                         'N_Ly(kN)','N_Sx(kN)','N_Sy(kN)','ML(kNm)','QL(kN)','Ms(kNm)','Qs(kN)','beam_deflection_x(m)','beam_deflection_y(m)','beam_deflection_x(after_revision)(m)','beam_deflection_y(after_revision)(m)',
+                         'beam_bending_stress(N/mm2)(long)','beam_shear_stress(N/mm2)(long)','beam_bending_stress(N/mm2)(short)','beam_shear_stress(N/mm2)(short)'])
         for i in beams:
             writer.writerow([i.no,i.i,i.j,'{:.2f}'.format(i.length),'{:10}'.format(i.I),'{:.2f}'.format(float(i.K)),'{:.2f}'.format(i.eq_beam_stiff_ratio_i_initial),
                              '{:.2f}'.format(i.eq_beam_stiff_ratio_j_initial),'{:.2f}'.format(i.eq_beam_stiff_ratio_i),'{:.2f}'.format(i.eq_beam_stiff_ratio_j),
@@ -116,12 +117,18 @@ def output_whole_data(columns,beams,nodes,layers):
                              '{:.2f}'.format(i.ML),
                              '{:.2f}'.format(i.QL),
                              '{:.2f}'.format(i.Ms),
-                             '{:.2f}'.format(i.Qs)])
+                             '{:.2f}'.format(i.Qs),i.delta_x,i.delta_y,i.rev_delta_x,i.rev_delta_y,
+                             '{:.2f}'.format(i.sigma_b_L) if type(i.sigma_b_L) is not list else '0.00',
+                             '{:.2f}'.format(i.tau_L) if type(i.tau_L) is not list else '0.00',
+                             '{:.2f}'.format(i.sigma_b_s) if type(i.sigma_b_s) is not list else '0.00',
+                             '{:.2f}'.format(i.tau_s) if type(i.tau_s) is not list else '0.00'])
 
         writer.writerow(['<column_data>'])
         writer.writerow(['No','i','j','story','length(m)','A(m2)','Ix(m4)','Iy(m4)','Z(m3)','Zp(m3)','initial_H(mm)','initial_t(mm)',
                          'initial_stiff_ratio_x','initial_stiff_ratio_y','H(mm)','t(mm)','stiff_ratio_x','stiff_ratio_y','F(N/mm2)',
-                         'base_K(cm3)','load_area(m2)','init_group','Mpx(kNm)','Mpy(kNm)','unit_weight(kg/m)','weight(kg)','D_x','D_y','M_Lx_i(kNm)','M_Lx_j(kNm)','M_Ly_i(kNm)','M_Ly_j(kNm)',
+                         'base_K(cm3)','load_area(m2)','init_group','Mpx(kNm)','Mpy(kNm)','unit_weight(kg/m)','weight(kg)',
+                         'y0_x','y1_x','y2_x','y3_x','y0_y','y1_y','y2_y','y3_y','k','a',
+                         'D_x','D_y','M_Lx_i(kNm)','M_Lx_j(kNm)','M_Ly_i(kNm)','M_Ly_j(kNm)',
                          'M_Sx_i(kNm)','M_Sx_j(kNm)','M_Sy_i(kNm)','M_Sy_j(kNm)','Q_Lx_i(kN)','Q_Lx_j(kN)','Q_Ly_i(kN)','Q_Ly_j(kN)','Q_Sx(kN)','Q_Sy(kN)',
                          'N_Lx(kN)','N_Ly(kN)','N_Sx(kN)','N_Sy(kN)','MLx(kNm)','MLy(kNm)','QLx(kN)','QLy(kN)',
                          'NL(kN)','MSx(kNm)','MSy(kNm)','QSx(kN)','QSy(kN)','NSx(kN)','NSy(kN)','required_area(m2)','decrement_ratio_x','decrement_ratio_y',
@@ -130,7 +137,9 @@ def output_whole_data(columns,beams,nodes,layers):
             writer.writerow([i.no,i.i,i.j,i.story,i.length,i.A,i.Ix,i.Iy,i.Z,i.Zp,i.H_initial,i.t_initial,'{:.2f}'.format(i.stiff_ratio_x_initial),'{:.2f}'.format(i.stiff_ratio_y_initial),
                              i.H,i.t,'{:.2f}'.format(i.stiff_ratio_x),'{:.2f}'.format(i.stiff_ratio_y),
                              i.F,i.base_K,'{:.2f}'.format(i.load_area),i.init_group,'{:.2f}'.format(i.Mpx),'{:.2f}'.format(i.Mpy),
-                             '{:.2f}'.format(i.unit_weight),'{:.2f}'.format(i.weight),'{:.2f}'.format(i.D_x),'{:.2f}'.format(i.D_y),
+                             '{:.2f}'.format(i.unit_weight),'{:.2f}'.format(i.weight),i.y0_x,i.y1_x,i.y2_x,i.y3_x,i.y0_y,i.y1_y,i.y2_y,i.y3_y,
+                             '{:.2f}'.format(i.kk),'{:.2f}'.format(i.a),
+                             '{:.2f}'.format(i.D_x),'{:.2f}'.format(i.D_y),
                              '{:.2f}'.format(i.M_Lx[0]),'{:.2f}'.format(i.M_Lx[1]),'{:.2f}'.format(i.M_Ly[0]),'{:.2f}'.format(i.M_Ly[1]),
                              '{:.2f}'.format(i.M_Sx[0]),'{:.2f}'.format(i.M_Sx[1]),'{:.2f}'.format(i.M_Sy[0]),'{:.2f}'.format(i.M_Sy[1]),
                              '{:.2f}'.format(i.Q_Lx[0]),'{:.2f}'.format(i.Q_Lx[1]),'{:.2f}'.format(i.Q_Ly[0]),'{:.2f}'.format(i.Q_Ly[1]),

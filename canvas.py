@@ -101,16 +101,16 @@ class Column2D:
             self.y1 = node_i.z
             self.x2 = node_j.x
             self.y2 = node_j.z
-            self.m1 = column.M_Lx[0]
-            self.m2 = column.M_Lx[1]
+            self.m1 = -column.M_Lx[0]
+            self.m2 = -column.M_Lx[1]
 
         elif direction == "Y":
             self.x1 = node_i.y
             self.y1 = node_i.z
             self.x2 = node_j.y
             self.y2 = node_j.z
-            self.m1 = column.M_Ly[0]
-            self.m2 = column.M_Ly[1]
+            self.m1 = -column.M_Ly[0]
+            self.m2 = -column.M_Ly[1]
 
         else:
             raise "Undefined direction"
@@ -125,7 +125,7 @@ class Beam2D:
             self.y2 = node_j.z
             self.m1 = beam.M_Lx[0]
             self.m2 = beam.M_Lx[1]
-            self.m0 = beam.M0
+            self.m0 = beam.M0#1/2*(beam.M_Sx[0]+beam.M_Sx[1])
 
         elif direction == "Y":
             self.x1 = node_i.y
@@ -134,7 +134,7 @@ class Beam2D:
             self.y2 = node_j.z
             self.m1 = beam.M_Ly[0]
             self.m2 = beam.M_Ly[1]
-            self.m0 = beam.M0
+            self.m0 = beam.M0#1/2*(beam.M_Sy[0]+beam.M_Sy[1])
 
         else:
             raise "Undefined direction"
@@ -205,7 +205,7 @@ class FrameMembers:
             moment_line.line = line
             moment_line.m1 = beam2d.m1 
             moment_line.m2 = beam2d.m2 
-            moment_line.m0 = beam2d.m0 
+            moment_line.m0 = beam2d.m0
             moment_lines.append(moment_line)
             
             line_text1 = LineText(line)
@@ -220,7 +220,7 @@ class FrameMembers:
             line_text2.dominantBaseLine = "text-after-edge"
             
             line_text3 = LineText(line)
-            line_text3.text = "%.0f" % (0.5 * (beam2d.m2 - beam2d.m1) + beam2d.m0)
+            line_text3.text = "%.0f" % (-0.5 * (abs(beam2d.m2) + abs(beam2d.m1)) + beam2d.m0)
             line_text3.ratio = 0.5
             line_text3.textAnchor = "middle"
             line_text3.dominantBaseLine = "text-before-edge"

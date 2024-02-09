@@ -111,8 +111,8 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
         if beam.category != "BB":#基礎梁以外で適用
             temp = beam.length*m_to_mm/18.0#鹿島様略算式
 
-            if temp < 500:
-                beam_H = 500
+            if temp < 350:
+                beam_H = 350
             elif temp > 900:
                 beam_H = 900
             else:
@@ -133,6 +133,7 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             beam.Z = float(list(sorted_target_rows['Z'])[0])
             beam.Zp = float(list(sorted_target_rows['Zp'])[0])
             beam.F = float(list(sorted_target_rows['F'])[0])
+            beam.r = float(list(sorted_target_rows['r'])[0])
 
         #梁の剛度の算定(単位cm3）
             # 梁せいに応じた床スラブによる梁の剛性増大率の考慮
@@ -158,6 +159,7 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             beam.Z = 0
             beam.Zp = 0
             beam.F = 0
+            beam.r = 0
 
     #初期梁断面のグルーピング
     temp_list = map(lambda i: [beams[i].no, beams[i].H, beams[i].B, beams[i].story], range(len(beams)))

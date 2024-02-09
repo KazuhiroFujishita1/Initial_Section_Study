@@ -136,6 +136,7 @@ class Beam():
         self.H = []
         self.t1 = []
         self.t2 = []
+        self.r= []
 
         self.B_initial = []#H型鋼の初期選定断面
         self.H_initial = []
@@ -182,6 +183,8 @@ class Beam():
 
         self.delta_x = []
         self.delta_y = []
+        self.rev_delta_x = []#応力による断面更新後のdelta
+        self.rev_delta_x = []
 
         self.selected_section_no = []
         self.required_web_area = []
@@ -224,6 +227,17 @@ class Column():
 
         self.D_x = []#算定D値
         self.D_y = []
+
+        self.y0_x = []#反曲点高比
+        self.y1_x = []
+        self.y2_x = []
+        self.y3_x = []
+        self.y0_y = []#反曲点高比
+        self.y1_y = []
+        self.y2_y = []
+        self.y3_y = []
+        self.kk = []#k'
+        self.a = []#a
 
         self.M_Lx =[]#算定応力
         self.M_Ly =[]
@@ -286,7 +300,9 @@ class Layer():
         self.outerwall_length = outwalllength
 
         self.weight = []
+        self.weight_seismic = []
         self.cum_weight = []
+        self.cum_weight_seismic = []
         self.alpha_i = []
         self.Ai = []
         self.Ci = []
