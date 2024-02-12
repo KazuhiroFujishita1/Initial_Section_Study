@@ -258,11 +258,13 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
 
     #必要な梁の断面係数、ウェブ断面積以上の部材をリストより選定
             filtered_list = selected_beam_list[((selected_beam_list['Z']*m_to_mm**3-selected_beam_list['t1']*(selected_beam_list['H']-selected_beam_list['t2']*2)**2/6) \
-                                                * selected_beam_list['F']/beam.F > beam.required_Z/(m_to_mm**3)) &
+                                                * selected_beam_list['F']/beam.F > beam.required_Z) &
             ((selected_beam_list['H']-selected_beam_list['t2']*2-selected_beam_list['r']*2)*selected_beam_list['t1'] * selected_beam_list['F']/beam.F \
-             > beam.required_web_area/(m_to_mm**2))]
+              > beam.required_web_area)]
+
     #さらに梁せいの制限で絞り込み（スパンの1/20以上）
-            filtered_list2 = filtered_list[(filtered_list['H']/(m_to_mm) > beam.length*1.0/20.0)]
+            filtered_list2 = filtered_list#filtered_list[(filtered_list['H']/(m_to_mm) > beam.length*1.0/20.0)]
+            print(filtered_list2)
 
             beam.selected_section_no = float(list(filtered_list2['No'])[0])
             beam.I = float(list(filtered_list2['Ix'])[0])  # 断面諸元の更新
@@ -296,7 +298,7 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
                         beam.Zp = float(list(filtered_list2['Zp'])[temp_no])
                         beam.F = float(list(filtered_list2['F'])[temp_no])
                         beam.r = float(list(filtered_list2['r'])[temp_no])
-                        #print("Beam deflection is NG")
+                        print("Beam deflection is NG")
                     else:
                         print("Beam deflection is OK")
                         break
@@ -317,7 +319,7 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
                         beam.Zp = float(list(filtered_list2['Zp'])[temp_no])
                         beam.F = float(list(filtered_list2['F'])[temp_no])
                         beam.r = float(list(filtered_list2['r'])[temp_no])
-                        #print("Beam deflection is NG")
+                        print("Beam deflection is NG")
                     else:
                         print("Beam deflection is OK")
                         break
@@ -327,10 +329,10 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
             elif beam.direction == "Y":
                 beam.rev_delta_y = temp_delta_y
 
-            #i.judge_b_L = sigma_b_L/(f_b/1.5)
-            #i.judge_b_s = sigma_b_s/f_b
-            #i.judge_s_L = tau_L/(f_s/1.5)
-            #i.judge_s_s = tau_s/f_s
+            # i.judge_b_L = sigma_b_L/(f_b/1.5)
+            # i.judge_b_s = sigma_b_s/f_b
+            # i.judge_s_L = tau_L/(f_s/1.5)
+            # i.judge_s_s = tau_s/f_s
 
     #曲げせん断検定比が0.9以上の場合、選定部材を1ランク上げる
             #if i.judge_b_L >= 0.9 or i.judge_b_s >= 0.9 or i.judge_s_L >= 0.9 or i.judge_s_s >= 0.9:
