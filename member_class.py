@@ -215,6 +215,7 @@ class Column():
         self.stiff_ratio_y_initial = []
         self.F = []#FF
         self.base_K = [] #柱せいより決まる等価な基礎梁剛度
+        self.base_K_initial = [] #柱せいより決まる等価な基礎梁剛度
         self.load_area = load_area #柱の負担面積
 
         self.init_group = []#初期断面のグルーピング

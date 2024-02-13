@@ -176,6 +176,7 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
         column.t_initial = column.t
         column.stiff_ratio_x_initial = column.stiff_ratio_x
         column.stiff_ratio_y_initial = column.stiff_ratio_y
+        column.base_K_initial = column.base_K
     #初期選定はり断面のメモリー
     for beam in beams:
         beam.B_initial = beam.B
