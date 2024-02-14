@@ -115,7 +115,7 @@ def calc_stiffness_ratio(columns,beams,nodes):
 def calc_eq_beam_stiffness(beams,columns,nodes):
     #単位変換用係数
     m_to_mm = 1000.0#m→mmへ
-    II = 3240000000#800×900の基礎梁断面
+    II = 10000#800×900の基礎梁断面→無限大の基礎梁断面
     for beam in beams:
         if beam.category != "BB":  # 基礎梁以外
             if beam.boundary_i == "pin" and beam.boundary_j == "fix":  # i端がピン接合の場合
