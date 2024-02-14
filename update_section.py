@@ -73,10 +73,16 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
         beam_group.neighbor_group = temp4
         beam_group.neighbor_group_no = temp5
 
+    #比較する順序を設定（梁高さが大きいものから順に比較）
+    for group in beam_groups:
+        group.neighbor_group = sorted(group.neighbor_group, reverse=True)#各節点で大きいものから比較するため隣接梁のリストは降順に並べる）
+        print(group.group_name,group.neighbor_group)
+
     # 各梁グループについて、隣接する梁のグループのせいとの関係性を調べる（小さい差の調整）
-    for beam_group in beam_groups:
-        test_H = beams[beam_group.ID[0] - 1].H  # グループに属する梁のせい
-        for j in beam_group.neighbor_group_no:
+    group_no =0
+    while group_no < len(beam_groups):
+        test_H = beams[beam_groups[group_no].ID[0] - 1].H  # グループに属する梁のせい
+        for j in beam_groups[group_no].neighbor_group_no:
             neighbor_H = beams[beam_groups[j - 1].ID[0] - 1].H  # 隣接する梁グループに属する梁のせい
             # 梁高さの差が150mm以内の場合なら小さい方の梁せいを合わせにいく(588と600の隣接はOK）(2/7 revised)
             if abs(float(test_H) - float(neighbor_H)) > 5 \
@@ -84,7 +90,7 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
                 # 算定梁せいに適合する梁の選定
                 if float(test_H) >= float(neighbor_H):
                     filtered_beam_list = selected_beam_list[
-                        (selected_beam_list['H'] == test_H) & (selected_beam_list['Zp'] >= beams[beam_group.ID[0] - 1].Zp)]
+                        (selected_beam_list['H'] == test_H) & (selected_beam_list['Zp'] >= beams[beam_groups[group_no].ID[0] - 1].Zp)]
                     for k in beam_groups[j - 1].ID:
                         beams[k - 1].I = float(list(filtered_beam_list['Ix'])[0])
                         beams[k - 1].selected_section_no = float(list(filtered_beam_list['No'])[0])
@@ -96,11 +102,11 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
                         beams[k - 1].Zp = float(list(filtered_beam_list['Zp'])[0])
                         beams[k - 1].r = float(list(filtered_beam_list['r'])[0])
                         #beams[k - 1].F = float(list(filtered_beam_list['F'])[0])ここで変更した場合材質はオリジナルのまま（2/7 revised）
-
+                    break  # 2重ループから抜ける
                 else:
                     filtered_beam_list = selected_beam_list[(selected_beam_list['H'] == neighbor_H) & (
                                 selected_beam_list['Zp'] >= beams[beam_groups[j - 1].ID[0] - 1].Zp)]
-                    for k in beam_group.ID:
+                    for k in beam_groups[group_no].ID:
                         beams[k - 1].I = float(list(filtered_beam_list['Ix'])[0])
                         beams[k - 1].selected_section_no = float(list(filtered_beam_list['No'])[0])
                         beams[k - 1].H = float(list(filtered_beam_list['H'])[0])
@@ -111,6 +117,8 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
                         beams[k - 1].Zp = float(list(filtered_beam_list['Zp'])[0])
                         beams[k - 1].r = float(list(filtered_beam_list['r'])[0])
                         #beams[k - 1].F = float(list(filtered_beam_list['F'])[0])ここで変更した場合材質はオリジナルのまま（2/7 revised）
+                    break  # 2重ループから抜ける
+        group_no += 1#梁成を更新しない場合次のグループをチェック
 
     # 梁断面の再グルーピング
     temp_list = [[beams[i].no, beams[i].H, beams[i].B, beams[i].story]
@@ -277,6 +285,13 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
             beam.F = float(list(filtered_list2['F'])[0])
             beam.r = float(list(filtered_list2['r'])[0])
 
+    #応力に基づく大梁の選定断面のメモリー
+            beam.B_phase1 = beam.B
+            beam.H_phase1 = beam.H
+            beam.t1_phase1 = beam.t1
+            beam.t2_phase1 = beam.t2
+            beam.r_phase1 = beam.r
+
             # 大梁のたわみ算定に基づく断面更新(ダミーの基礎梁は除く）
             temp_no=0
             while True:
@@ -328,6 +343,13 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
                 beam.rev_delta_x = temp_delta_x
             elif beam.direction == "Y":
                 beam.rev_delta_y = temp_delta_y
+
+            # 長期たわみ考慮に基づく大梁の選定断面のメモリー
+            beam.B_phase2 = beam.B
+            beam.H_phase2 = beam.H
+            beam.t1_phase2 = beam.t1
+            beam.t2_phase2 = beam.t2
+            beam.r_phase2 = beam.r
 
             # i.judge_b_L = sigma_b_L/(f_b/1.5)
             # i.judge_b_s = sigma_b_s/f_b
@@ -412,12 +434,13 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
         else:#OKの場合アルゴリズムのループを抜ける
             break
 
-    # 梁断面の再グルーピング
-    temp_list = [[beams[i].no, beams[i].H, beams[i].B, beams[i].story]
-                 for i in range(len(beams))]
-    table_columns = ["No", "H", "B", "story"]
-    group_data = make_group(temp_list, table_columns, str("story"), str("H"))  # グルーピング
-    beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
+    # ダイヤフラム調整後の大梁の選定断面のメモリー
+    for beam in beams:
+        beam.B_phase3 = beam.B
+        beam.H_phase3 = beam.H
+        beam.t1_phase3 = beam.t1
+        beam.t2_phase3 = beam.t2
+        beam.r_phase3 = beam.r
 
     #梁断面の更新に伴う剛度の更新
     for beam in beams:

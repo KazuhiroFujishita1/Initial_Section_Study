@@ -138,6 +138,24 @@ class Beam():
         self.t2 = []
         self.r= []
 
+        self.B_phase1 = []#H型鋼の形状(フェーズ1：応力解析）
+        self.H_phase1 = []
+        self.t1_phase1 = []
+        self.t2_phase1 = []
+        self.r_phase1 = []
+
+        self.B_phase2 = []#H型鋼の形状(フェーズ2：長期たわみ考慮）
+        self.H_phase2 = []
+        self.t1_phase2 = []
+        self.t2_phase2 = []
+        self.r_phase2 = []
+
+        self.B_phase3 = []#H型鋼の形状(フェーズ3：ダイヤフラム調整後）
+        self.H_phase3 = []
+        self.t1_phase3 = []
+        self.t2_phase3 = []
+        self.r_phase3 = []
+
         self.B_initial = []#H型鋼の初期選定断面
         self.H_initial = []
         self.t1_initial = []

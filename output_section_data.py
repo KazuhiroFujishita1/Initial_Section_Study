@@ -81,6 +81,7 @@ def output_whole_data(columns,beams,nodes,layers):
         writer.writerow(['<beam_data>'])
         writer.writerow(['No','i','j','length(m)','I(m4)','K(cm3)','initial_eq_beam_stiff_ratio_i','initial_eq_beam_stiff_ratio_j','eq_beam_stiff_ratio_i','eq_beam_stiff_ratio_j','phai','phai2','Ci(kNm)','Cj(kNm)','beam_category','beam_direction',
                          'beam_belong_story','M0(kNm)','Q0(kN)','unit_weight(kg/m)','weight(kg)','Z(m3)','Zp(m3)','initial_B(mm)','initial_H(mm)','initial_t1(mm)','initial_t2(mm)',
+                         'phase1_B(mm)','phase1_H(mm)','phase1_t1(mm)','phase1_t2(mm)','phase2_B(mm)','phase2_H(mm)','phase2_t1(mm)','phase2_t2(mm)','phase3_B(mm)','phase3_H(mm)','phase3_t1(mm)','phase3_t2(mm)',
                          'B(mm)','H(mm)','t1(mm)','t2(mm)','init_group','boundary_i','boundary_j',
                          'Mp(kNm)','M_Lx_i(kNm)','M_Lx_j(kNm)','M_Lx0(kNm)','M_Ly_i(kNm)','M_Ly_j(kNm)','M_Ly0(kNm)','M_Sx_i(kNm)','M_Sx_j(kNm)','M_Sy_i(kNm)','M_Sy_j(kNm)','Q_Lx_i(kN)','Q_Lx_j(kN)',
                          'Q_Ly_i(kN)','Q_Ly_j(kN)','Q_Sx(kN)','Q_Sy(kN)','N_Lx(kN)',
@@ -92,7 +93,9 @@ def output_whole_data(columns,beams,nodes,layers):
                              i.pai,i.pai2,'{:.2f}'.format(i.Ci),'{:.2f}'.format(i.Cj),i.category,
                              i.direction,i.story,'{:.2f}'.format(i.M0),'{:.2f}'.format(i.Q0),'{:.2f}'.format(i.unit_weight),
                              '{:.2f}'.format(i.weight),'{:10}'.format(i.Z),'{:10}'.format(i.Zp),i.B_initial,i.H_initial,i.t1_initial,
-                             i.t2_initial,i.B,i.H,i.t1,i.t2,i.init_group,i.boundary_i,i.boundary_j,
+                             i.t2_initial,i.B_phase1,i.H_phase1,i.t1_phase1,i.t2_phase1,i.r_phase1,
+                             i.B_phase2, i.H_phase2, i.t1_phase2, i.t2_phase2, i.r_phase2,i.B_phase3,i.H_phase3,i.t1_phase3,i.t2_phase3,i.r_phase3,
+                             i.B,i.H,i.t1,i.t2,i.init_group,i.boundary_i,i.boundary_j,
                              '{:.2f}'.format(i.Mp) if type(i.Mp) is float else '0.00',
                              '{:.2f}'.format(i.M_Lx[0]) if len(i.M_Lx) > 0 else '0.00',
                              '{:.2f}'.format(i.M_Lx[1]) if len(i.M_Lx) > 0 else '0.00',
