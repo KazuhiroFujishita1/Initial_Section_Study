@@ -8,6 +8,8 @@ import calc_stress
 #部材のグルーピング
 def make_group(list,list_name,key1,key2):
 
+    #list = sorted(list, key=lambda x: x[1],reverse=True)#高さが高い順に並びかえ
+
     data_frame = pd.DataFrame(list, columns=list_name)
     sorted_frame = data_frame.sort_values(by=[key1, key2])
 
@@ -17,7 +19,13 @@ def make_group(list,list_name,key1,key2):
         for name2, group2 in group.groupby([key2]):
             group_data.append((temp, str(name) + 'F_' + str(name2), group2['No'].values.tolist()))
             temp += 1
-
+    # group_data = sorted(group_data,reverse=True)#グループを降順に並び替え
+    # temp=1#group_noを昇順に書き換え
+    # group_data_rev = []
+    # for tem in group_data:
+    #     tem = (temp, tem[1], tem[2])
+    #     group_data_rev.append(tem)
+    #     temp+= 1
     return group_data
 
 #初期仮定断面の設定
@@ -139,8 +147,10 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             # 梁せいに応じた床スラブによる梁の剛性増大率の考慮
             if beam.H <= 600:
                 beam.K = beam.I/beam.length*1000000*beam.pai2#床スラブの剛性増大率考慮
+                beam.calc_phai = beam.pai2
             else:
                 beam.K = beam.I/beam.length*1000000*beam.pai#床スラブの剛性増大率考慮
+                beam.calc_phai = beam.pai
 
         # 部材自重の算定
             beam.unit_weight = float(list(sorted_target_rows['unit_m'])[0]*9.80665/m_to_mm)

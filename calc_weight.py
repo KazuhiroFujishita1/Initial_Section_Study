@@ -26,20 +26,29 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
     #層重量の算定(とりあえず鹿島様のPPT p.3の通りに実装した）
     #内部計算した部材自重の扱いについては鹿島様要相談
     temp = 0
+    temp1 = 0;temp2 = 0
     temp_seismic = 0
     for i in range(len(layers)):
         if i == 0:
-            layers[i].weight = layers[i].omega1 * layers[i].floor_area + layers[i].omega2 * layers[i].height/2.0 * layers[i].outerwall_length#最上階
+            layers[i].weight_floor = layers[i].omega1 * layers[i].floor_area
+            layers[i].weight_wall = layers[i].omega2 * layers[i].height/2.0 * layers[i].outerwall_length#最上階
+            layers[i].weight = layers[i].weight_floor+ layers[i].weight_wall#最上階
             layers[i].weight_seismic = layers[i].omega1_seismic * layers[i].floor_area + layers[i].omega2_seismic * layers[
                 i].height / 2.0 * layers[i].outerwall_length  # 最上階
         else:
-            layers[i].weight = layers[i].omega1 * layers[i].floor_area + layers[i].omega2 * \
-                               (layers[i].height+layers[i-1].height)/2.0 * layers[i].outerwall_length
+            layers[i].weight_floor = layers[i].omega1 * layers[i].floor_area
+            layers[i].weight_wall = layers[i].omega2 * (layers[i].height+layers[i-1].height)/2.0 * layers[i].outerwall_length
+            layers[i].weight = layers[i].weight_floor + layers[i].weight_wall
             layers[i].weight_seismic = layers[i].omega1_seismic * layers[i].floor_area + layers[i].omega2_seismic * \
                                (layers[i].height+layers[i-1].height)/2.0 * layers[i].outerwall_length
+
         temp += layers[i].weight #上から層重量を足す
+        temp1 += layers[i].weight_floor #上から層重量を足す
+        temp2 += layers[i].weight_wall #上から層重量を足す
         temp_seismic += layers[i].weight_seismic
         layers[i].cum_weight = temp
+        layers[i].cum_weight_floor = temp1
+        layers[i].cum_weight_wall = temp2
         layers[i].cum_weight_seismic = temp_seismic
 
     #1次固有周期の算定
@@ -50,7 +59,6 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
 
     if manual_T != 0:
         T = manual_T
-    print(T)
 
     #振動特性係数Rtの算定
     if T < Tc:
@@ -70,6 +78,11 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
     #各層柱の長期軸力の仮定
     # 外部計算した各柱の負担面積の比率に基づいて、各層の層重量を分担
     for column in columns:
-        column.N_Lx = layers[len(layers)-column.story].cum_weight * column.load_area / layers[len(layers)-column.story].floor_area
-        column.N_Ly = layers[len(layers)-column.story].cum_weight * column.load_area / layers[len(layers)-column.story].floor_area
-
+        column.N_Lx = layers[len(layers)-column.story].cum_weight_floor \
+                      * column.load_area / layers[len(layers)-column.story].floor_area \
+        + layers[len(layers)-column.story].cum_weight_wall \
+        * column.wall_load_length / layers[len(layers)-column.story].outerwall_length
+        column.N_Ly = layers[len(layers)-column.story].cum_weight_floor * column.load_area \
+                      / layers[len(layers)-column.story].floor_area \
+        + layers[len(layers)-column.story].cum_weight_wall \
+        * column.wall_load_length / layers[len(layers)-column.story].outerwall_length

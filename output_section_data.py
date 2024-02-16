@@ -1,7 +1,16 @@
 import csv
 
+#グルーピング結果の出力
+def grouping_output(beams,columns,column_groups,beam_groups):
+    for beam_group in beam_groups:
+        for ID in beam_group.ID:
+            beams[ID-1].group_name = beam_group.group_name
+    for column_group in column_groups:
+        for ID in column_group.ID:
+            columns[ID-1].group_name = column_group.group_name
+
 #検討した仮定断面の出力
-def output_section_data(columns,beams,beam_select_mode):
+def output_section_data(columns,beams,beam_select_mode,column_groups,beam_groups):
     #csvファイル名
     output_file = 'output_section'
 
@@ -9,14 +18,14 @@ def output_section_data(columns,beams,beam_select_mode):
     with open(output_file + '_'+ str(beam_select_mode)+ '.csv', mode='w',newline='',encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(['<selected_beam_section>'])
-        writer.writerow(['No','H(mm)','B(mm)','t1(mm)','t2(mm)','stiffness_ratio_i','stiffness_ratio_j','initial_H(mm)','initial_B(mm)',
+        writer.writerow(['No','group_name','H(mm)','B(mm)','t1(mm)','t2(mm)','stiffness_ratio_i','stiffness_ratio_j','initial_H(mm)','initial_B(mm)',
                          'initial_t1(mm)','initial_t2(mm)','initial_stiffness_ratio_i','initial_stiffness_ratio_j','I(m4)','Z(m3)','Zp(m3)','F(N/mm2)',
                          'M_Lx_i(kNm)','M_Lx_j(kNm)','M_Lx0(kNm)','M_Ly_i(kNm)','M_Ly_j(kNm)','M_Ly0(kNm)','M_Sx_i(kNm)','M_Sx_j(kNm)','M_Sy_i(kNm)','M_Sy_j(kNm)',
                          'Q_Lx_i(kN)','Q_Lx_j(kN)',
                          'Q_Ly_i(kN)','Q_Ly_j(kN)','Q_Sx(kN)','Q_Sy(kN)','N_Lx(kN)',
                          'N_Ly(kN)','N_Sx(kN)','N_Sy(kN)','ML(kNm)','QL(kN)','Ms(kNm)','Qs(kN)','long-term deflection_x(m)','long-term deflection_y(m)'])
         for i in beams:
-            writer.writerow([i.no,'{:.2f}'.format(i.H),'{:.2f}'.format(i.B),'{:.2f}'.format(i.t1),'{:.2f}'.format(i.t2),
+            writer.writerow([i.no,i.group_name,'{:.2f}'.format(i.H),'{:.2f}'.format(i.B),'{:.2f}'.format(i.t1),'{:.2f}'.format(i.t2),
                              '{:.2f}'.format(i.eq_beam_stiff_ratio_i),'{:.2f}'.format(i.eq_beam_stiff_ratio_j),
                              '{:.2f}'.format(i.H_initial), '{:.2f}'.format(i.B_initial), '{:.2f}'.format(i.t1_initial), '{:.2f}'.format(i.t2_initial),
                              '{:.2f}'.format(i.eq_beam_stiff_ratio_i_initial),'{:.2f}'.format(i.eq_beam_stiff_ratio_j_initial),i.I,i.Z,i.Zp
@@ -47,14 +56,14 @@ def output_section_data(columns,beams,beam_select_mode):
                              '{:.2f}'.format(i.Qs),i.delta_x if type(i.delta_x) is not list else '0.00',
                              i.delta_y if type(i.delta_y) is not list else '0.00'])
         writer.writerow(['<selected_column_section>'])
-        writer.writerow(['No','H(mm)','t(mm)','A(m2)','Ix(m2)','Iy(m2)','Zp(m2)','stiffness_ratio','initial_H(mm)',
+        writer.writerow(['No','Group_name','H(mm)','t(mm)','A(m2)','Ix(m2)','Iy(m2)','Zp(m2)','stiffness_ratio','initial_H(mm)',
                          'initial_t(mm)','initial_stiffness_ratio','F(N/mm2)','D_x','D_y',
                          'M_Lx_i(kNm)','M_Lx_j(kNm)','M_Ly_i(kNm)','M_Ly_j(kNm)',
                          'M_Sx_i(kNm)','M_Sx_j(kNm)','M_Sy_i(kNm)','M_Sy_j(kNm)','Q_Lx_i(kN)','Q_Lx_j(kN)','Q_Ly_i(kN)','Q_Ly_j(kN)','Q_Sx(kN)','Q_Sy(kN)',
                          'N_Lx(kN)','N_Ly(kN)','N_Sx(kN)','N_Sy(kN)','MLx(kNm)','MLy(kNm)','QLx(kN)','QLy(kN)',
                          'NL(kN)','MSx(kNm)','MSy(kNm)','QSx(kN)','QSy(kN)','NSx(kN)','NSy(kN)'])
         for i in columns:
-            writer.writerow([i.no,i.H,i.t,i.A,i.Ix,i.Iy,i.Zp,'{:.2f}'.format(i.stiff_ratio_x),i.H_initial,i.t_initial,'{:.2f}'.format(i.stiff_ratio_x_initial),
+            writer.writerow([i.no,i.group_name,i.H,i.t,i.A,i.Ix,i.Iy,i.Zp,'{:.2f}'.format(i.stiff_ratio_x),i.H_initial,i.t_initial,'{:.2f}'.format(i.stiff_ratio_x_initial),
                              i.F,'{:.2f}'.format(i.D_x),'{:.2f}'.format(i.D_y),
                              '{:.2f}'.format(i.M_Lx[0]), '{:.2f}'.format(i.M_Lx[1]), '{:.2f}'.format(i.M_Ly[0]),
                              '{:.2f}'.format(i.M_Ly[1]),
@@ -79,7 +88,7 @@ def output_whole_data(columns,beams,nodes,layers):
     with open(output_file + '.csv', mode='w',newline='',encoding='utf-8') as file:
         writer = csv.writer(file)
         writer.writerow(['<beam_data>'])
-        writer.writerow(['No','i','j','length(m)','I(m4)','K(cm3)','initial_eq_beam_stiff_ratio_i','initial_eq_beam_stiff_ratio_j','eq_beam_stiff_ratio_i','eq_beam_stiff_ratio_j','phai','phai2','Ci(kNm)','Cj(kNm)','beam_category','beam_direction',
+        writer.writerow(['No','i','j','length(m)','I(m4)','K(cm3)','initial_eq_beam_stiff_ratio_i','initial_eq_beam_stiff_ratio_j','eq_beam_stiff_ratio_i','eq_beam_stiff_ratio_j','phai','phai2','calc_phai','Ci(kNm)','Cj(kNm)','beam_category','beam_direction',
                          'beam_belong_story','M0(kNm)','Q0(kN)','unit_weight(kg/m)','weight(kg)','Z(m3)','Zp(m3)','initial_B(mm)','initial_H(mm)','initial_t1(mm)','initial_t2(mm)',
                          'phase1_B(mm)','phase1_H(mm)','phase1_t1(mm)','phase1_t2(mm)','phase2_B(mm)','phase2_H(mm)','phase2_t1(mm)','phase2_t2(mm)','phase3_B(mm)','phase3_H(mm)','phase3_t1(mm)','phase3_t2(mm)',
                          'B(mm)','H(mm)','t1(mm)','t2(mm)','init_group','boundary_i','boundary_j',
@@ -90,7 +99,7 @@ def output_whole_data(columns,beams,nodes,layers):
         for i in beams:
             writer.writerow([i.no,i.i,i.j,'{:.2f}'.format(i.length),'{:10}'.format(i.I),'{:.2f}'.format(float(i.K)),'{:.2f}'.format(i.eq_beam_stiff_ratio_i_initial),
                              '{:.2f}'.format(i.eq_beam_stiff_ratio_j_initial),'{:.2f}'.format(i.eq_beam_stiff_ratio_i),'{:.2f}'.format(i.eq_beam_stiff_ratio_j),
-                             i.pai,i.pai2,'{:.2f}'.format(i.Ci),'{:.2f}'.format(i.Cj),i.category,
+                             i.pai,i.pai2,i.calc_phai,'{:.2f}'.format(i.Ci),'{:.2f}'.format(i.Cj),i.category,
                              i.direction,i.story,'{:.2f}'.format(i.M0),'{:.2f}'.format(i.Q0),'{:.2f}'.format(i.unit_weight),
                              '{:.2f}'.format(i.weight),'{:10}'.format(i.Z),'{:10}'.format(i.Zp),i.B_initial,i.H_initial,i.t1_initial,
                              i.t2_initial,i.B_phase1,i.H_phase1,i.t1_phase1,i.t2_phase1,
