@@ -39,10 +39,11 @@ def check_beam_height(nodes, beam_groups, beams):
         test_H = beams[beam_group.ID[0] - 1].H  # グループに属する梁のせい
         for j in beam_group.neighbor_group_no:
             neighbor_H = beams[beam_groups[j - 1].ID[0] - 1].H  # 隣接する梁グループに属する梁のせい
-            if abs(test_H-neighbor_H) > 5 and abs(test_H-neighbor_H) < 200:#せいに調整が必要な場合　NGを返す
+            if abs(test_H-neighbor_H) > 5 and abs(test_H-neighbor_H) <= 150:#せいに調整が必要な場合　NGを返す
                 #beam_height_condition ="beam height is NG"
                 check1 = False
                 break
+
     return beam_height_condition, check1
 
 #ダイヤフラムの形状制約に基づく梁せいの調整
@@ -74,9 +75,9 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
         beam_group.neighbor_group_no = temp5
 
     #比較する順序を設定（梁高さが大きいものから順に比較）
-    for group in beam_groups:
-        group.neighbor_group = sorted(group.neighbor_group, reverse=True)#各節点で大きいものから比較するため隣接梁のリストは降順に並べる）
-        print(group.group_name,group.neighbor_group)
+    # for group in beam_groups:
+    #     group.neighbor_group = sorted(group.neighbor_group,reverse=True)#各節点で大きいものから比較するため隣接梁のリストは降順に並べる）
+    #     print(group.group_name,group.neighbor_group,group.no)
 
     # 各梁グループについて、隣接する梁のグループのせいとの関係性を調べる（小さい差の調整）
     group_no =0
@@ -102,7 +103,7 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
                         beams[k - 1].Zp = float(list(filtered_beam_list['Zp'])[0])
                         beams[k - 1].r = float(list(filtered_beam_list['r'])[0])
                         #beams[k - 1].F = float(list(filtered_beam_list['F'])[0])ここで変更した場合材質はオリジナルのまま（2/7 revised）
-                    break  # 2重ループから抜ける
+                    #break  # 2重ループから抜ける
                 else:
                     filtered_beam_list = selected_beam_list[(selected_beam_list['H'] == neighbor_H) & (
                                 selected_beam_list['Zp'] >= beams[beam_groups[j - 1].ID[0] - 1].Zp)]
@@ -117,7 +118,7 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
                         beams[k - 1].Zp = float(list(filtered_beam_list['Zp'])[0])
                         beams[k - 1].r = float(list(filtered_beam_list['r'])[0])
                         #beams[k - 1].F = float(list(filtered_beam_list['F'])[0])ここで変更した場合材質はオリジナルのまま（2/7 revised）
-                    break  # 2重ループから抜ける
+                    #break  # 2重ループから抜ける
         group_no += 1#梁成を更新しない場合次のグループをチェック
 
     # 梁断面の再グルーピング
@@ -228,7 +229,7 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
     #                     temp += 1
 
 #大梁断面を長期・短期応力評価結果に基づいて更新
-def update_beam_section(nodes,beams,beam_select_mode,EE):
+def update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_groups):
 
     #単位変換用係数
     m_to_mm = 1000.0#m→mmへ
@@ -270,9 +271,8 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
             ((selected_beam_list['H']-selected_beam_list['t2']*2-selected_beam_list['r']*2)*selected_beam_list['t1'] * selected_beam_list['F']/beam.F \
               > beam.required_web_area)]
 
-    #さらに梁せいの制限で絞り込み（スパンの1/20以上）
+    #さらに梁せいの制限で絞り込み（スパンの1/20以上の条件は削除）
             filtered_list2 = filtered_list#filtered_list[(filtered_list['H']/(m_to_mm) > beam.length*1.0/20.0)]
-            print(filtered_list2)
 
             beam.selected_section_no = float(list(filtered_list2['No'])[0])
             beam.I = float(list(filtered_list2['Ix'])[0])  # 断面諸元の更新
@@ -284,6 +284,10 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
             beam.Zp = float(list(filtered_list2['Zp'])[0])
             beam.F = float(list(filtered_list2['F'])[0])
             beam.r = float(list(filtered_list2['r'])[0])
+            if beam.H <= 600:
+                beam.calc_phai = beam.pai2
+            else:
+                beam.calc_phai = beam.pai
 
     #応力に基づく大梁の選定断面のメモリー
             beam.B_phase1 = beam.B
@@ -297,8 +301,8 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
             while True:
                 if beam.direction == "X":
                     temp_M_Lx0 = beam.M0 - np.average([abs(beam.M_Lx[0]), abs(beam.M_Lx[1])])
-                    temp_delta_x = (5 * beam.M0 / (48.0 * EE * beam.I) * beam.length ** 2
-                                - (abs(beam.M_Lx[0])+abs(beam.M_Lx[1])) / (16.0 * EE * beam.I) * beam.length ** 2)  # 梁中央のたわみ（未検証）
+                    temp_delta_x = (5 * beam.M0 / (48.0 * EE * beam.I * beam.calc_phai) * beam.length ** 2
+                                - (abs(beam.M_Lx[0])+abs(beam.M_Lx[1])) / (16.0 * EE * beam.I * beam.calc_phai) * beam.length ** 2)  # 梁中央のたわみ（未検証）
 
                 # 大梁たわみが1/300以上または20mm以上の場合大梁断面を更新
                     if abs(temp_delta_x / beam.length) >= 1.0 / 300.0: #or temp_delta_x > 0.02: (2/7 revised)
@@ -313,14 +317,20 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
                         beam.Zp = float(list(filtered_list2['Zp'])[temp_no])
                         beam.F = float(list(filtered_list2['F'])[temp_no])
                         beam.r = float(list(filtered_list2['r'])[temp_no])
+
+                        if beam.H <= 600:
+                            beam.calc_phai = beam.pai2
+                        else:
+                            beam.calc_phai = beam.pai
+
                         print("Beam deflection is NG")
                     else:
                         print("Beam deflection is OK")
                         break
                 else:
                     temp_M_Ly0 = beam.M0 - np.average([abs(beam.M_Ly[0]), abs(beam.M_Ly[1])])
-                    temp_delta_y = (5 * beam.M0 / (48.0 * EE * beam.I) * beam.length ** 2
-                                - (abs(beam.M_Ly[0])+abs(beam.M_Ly[1])) / (16.0 * EE * beam.I) * beam.length ** 2)  # 梁中央のたわみ（未検証）
+                    temp_delta_y = (5 * beam.M0 / (48.0 * EE * beam.I * beam.calc_phai) * beam.length ** 2
+                                - (abs(beam.M_Ly[0])+abs(beam.M_Ly[1])) / (16.0 * EE * beam.I * beam.calc_phai) * beam.length ** 2)  # 梁中央のたわみ（未検証）
                 # 大梁たわみが1/300以下であるか確認
                     if abs(temp_delta_y / beam.length) >= 1.0 / 300.0: #or temp_delta_y >= 0.02: (2/7 revised)
                     # NGの場合梁リストから一段上げて再確認
@@ -334,6 +344,12 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
                         beam.Zp = float(list(filtered_list2['Zp'])[temp_no])
                         beam.F = float(list(filtered_list2['F'])[temp_no])
                         beam.r = float(list(filtered_list2['r'])[temp_no])
+
+                        if beam.H <= 600:
+                            beam.calc_phai = beam.pai2
+                        else:
+                            beam.calc_phai = beam.pai
+
                         print("Beam deflection is NG")
                     else:
                         print("Beam deflection is OK")
@@ -422,17 +438,17 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
     group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
     beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
-    #梁せいの調整アルゴリズムの実行
-    while True:
-    #隣接グループの梁せいチェック
-        beam_height_condition, check1 = check_beam_height(nodes,beam_groups,beams)
-    #以下チェック結果がNGの場合、OKになるまで実施
-        print(beam_height_condition)
-    #ダイヤフラムの形状制約に基づく梁せいの調整
-        if check1 is False:
-            revise_beam_height(nodes,beam_groups,beams,selected_beam_list)
-        else:#OKの場合アルゴリズムのループを抜ける
-            break
+    # #梁せいの調整アルゴリズムの実行
+    # while True:
+    # #隣接グループの梁せいチェック
+    #     beam_height_condition, check1 = check_beam_height(nodes,beam_groups,beams)
+    # #以下チェック結果がNGの場合、OKになるまで実施
+    #     print(beam_height_condition)
+    # #ダイヤフラムの形状制約に基づく梁せいの調整
+    #     if check1 is False:
+    #         revise_beam_height(nodes,beam_groups,beams,selected_beam_list)
+    #     else:#OKの場合アルゴリズムのループを抜ける
+    #         break
 
     # ダイヤフラム調整後の大梁の選定断面のメモリー
     for beam in beams:
@@ -450,6 +466,15 @@ def update_beam_section(nodes,beams,beam_select_mode,EE):
                 beam.K = beam.I/beam.length*m_to_mm**2*beam.pai2#床スラブの剛性増大率考慮
             else:
                 beam.K = beam.I/beam.length*m_to_mm**2*beam.pai#床スラブの剛性増大率考慮
+
+    #ダイヤフラム調整後の梁断面の再グルーピング
+    temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
+          for i in range(len(beams))]
+    table_columns = ["No","H","B","story"]
+    group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
+    beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
+
+    return beam_groups
 
 #剛性チェックに基づく各層柱の必要剛性の算定
 def calc_based_stiffness(nodes,layers,beams,columns,EE):
@@ -767,3 +792,11 @@ def update_column_section(nodes,beams,columns,layers,EE):
     calc_column_thickness(columns)
     #更新後断面における剛比算定
     calc_stress.calc_stiffness_ratio(columns,beams,nodes)
+
+    # 柱断面のグルーピング
+    temp_list = map(lambda i: [columns[i].no, columns[i].H, columns[i].t, columns[i].story], range(len(columns)))
+    table_columns = ["No", "H", "t", "story"]
+    group_data = make_group(temp_list, table_columns, str("story"), str("H"))  # グルーピング
+    column_groups = [member_class.Column_Group(*data) for data in group_data]  # グループのインスタンス定義
+
+    return column_groups

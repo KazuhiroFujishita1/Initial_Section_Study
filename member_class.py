@@ -55,7 +55,7 @@ def read_model():
         #柱長さの算定
         column_length=calc_length(df3['i_point'][i],df3['j_point'][i],nodes)
 
-        column_data.append((df3['no'][i],df3['i_point'][i],df3['j_point'][i],df3['story'][i],column_length,df3['load_area'][i]))
+        column_data.append((df3['no'][i],df3['i_point'][i],df3['j_point'][i],df3['story'][i],column_length,df3['load_area'][i],df3['wall_load_length'][i]))
 
     columns = [Column(*data) for data in column_data]#柱インスタンスの作成
 
@@ -113,6 +113,7 @@ class Beam():
         self.eq_beam_stiff_ratio_j = [] #j端側の柱に考慮する等価な基礎梁剛比
         self.pai = beam_phai #床スラブの剛性増大率
         self.pai2 = beam_phai2 #床スラブの剛性増大率（せい600mm以下）
+        self.calc_phai = [] #計算に用いるΦ
         self.stiff_ratio = []#beam_stiff#剛比
         self.dist_load = dist_load #梁の分布荷重
         self.Ci = beam_load_i#i端の固定端モーメント
@@ -210,14 +211,17 @@ class Beam():
 
         self.F = []#FF
 
+        self.group_name = [] #グルーピングの名前
+
     # 柱のクラス
 class Column():
-    def __init__(self,column_no,column_i,column_j,column_story,column_length,load_area):
+    def __init__(self,column_no,column_i,column_j,column_story,column_length,load_area,wall_load_length):
         self.no = column_no
         self.i = column_i
         self.j = column_j
         self.story = column_story
         self.length = column_length
+        self.wall_load_length = wall_load_length
         self.A = []
         self.Ix = []#Ix
         self.Iy = []#Iy
@@ -304,6 +308,8 @@ class Column():
         self.axial_column_x_Mp = []
         self.axial_column_y_Mp = []
 
+        self.group_name = []  # グルーピングの名前
+
     # 層のクラス
 class Layer():
     def __init__(self,story,height,omega_1_floor,omega_2_floor,omega_1_seismic,omega_2_seismic,floor_area,outwalllength):
@@ -320,6 +326,10 @@ class Layer():
 
         self.weight = []
         self.weight_seismic = []
+        self.weight_floor =[]
+        self.weight_wall = []
+        self.cum_weight_floor =[]
+        self.cum_weight_wall = []
         self.cum_weight = []
         self.cum_weight_seismic = []
         self.alpha_i = []
