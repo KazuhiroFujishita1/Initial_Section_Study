@@ -5,6 +5,7 @@ from set_initial_section import *
 from calc_weight import *
 from update_section import *
 from output_section_data import *
+from output_RESP_D_script import *
 import yaml
 
 def start():
@@ -41,15 +42,21 @@ def start():
     load_calc(beams,columns)
 
 #大梁断面の更新
-    update_beam_section(nodes,beams,beam_select_mode,EE)
+    beam_groups = update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_groups)
 
 #柱断面の更新
-    update_column_section(nodes, beams, columns, layers, EE)
+    column_groups = update_column_section(nodes, beams, columns, layers, EE)
+
+#グルーピング出力
+    grouping_output(beams,columns,column_groups,beam_groups)
 
 #選定断面の出力
-    output_section_data(columns,beams,beam_select_mode)
+    output_section_data(columns,beams,beam_select_mode,column_groups,beam_groups)
 
 #全データの出力
     output_whole_data(columns,beams,nodes,layers)
+
+#RESP-Dscriptの出力
+    output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_groups,beam_groups)
 
     return nodes, beams, columns, layers, maximum_height

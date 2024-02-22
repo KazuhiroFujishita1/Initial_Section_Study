@@ -229,8 +229,10 @@ class Column():
         self.Zp = []
         self.H = []
         self.t = []
+        self.r = []
         self.H_initial = []
         self.t_initial = []
+        self.r_initial = []
         self.stiff_ratio_x = []#stiff_ratio_x#剛比
         self.stiff_ratio_y = []#stiff_ratio_y
         self.stiff_ratio_x_initial = []#初期断面の剛比

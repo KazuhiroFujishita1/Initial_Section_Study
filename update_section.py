@@ -125,7 +125,7 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
     temp_list = [[beams[i].no, beams[i].H, beams[i].B, beams[i].story]
                  for i in range(len(beams))]
     table_columns = ["No", "H", "B", "story"]
-    group_data = make_group(temp_list, table_columns, str("story"), str("H"))  # グルーピング
+    group_data = make_group(temp_list, table_columns, str("story"), str("H"), str("B"))  # グルーピング
     beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
     # # 各梁グループが隣接する梁を調べる
@@ -435,7 +435,7 @@ def update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_group
     temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
           for i in range(len(beams))]
     table_columns = ["No","H","B","story"]
-    group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
+    group_data = make_group(temp_list,table_columns,str("story"),str("H"),str("B"))#グルーピング
     beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
     # #梁せいの調整アルゴリズムの実行
@@ -471,7 +471,7 @@ def update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_group
     temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
           for i in range(len(beams))]
     table_columns = ["No","H","B","story"]
-    group_data = make_group(temp_list,table_columns,str("story"),str("H"))#グルーピング
+    group_data = make_group(temp_list,table_columns,str("story"),str("H"),str("B"))#グルーピング
     beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
     return beam_groups
@@ -697,6 +697,7 @@ def calc_limit_column_size(nodes,layers,columns,beams,EE):
     #得られた最低柱断面諸元に更新
             target_row = column_list[column_list['No'] == column.minimum_selected_section_no]
             column.t = float(target_row['t'])
+            column.r = float(target_row['r'])
             column.A = float(target_row['A'])
             column.Ix = float(target_row['Ix'])
             column.Iy = float(target_row['Iy'])
@@ -713,6 +714,7 @@ def calc_limit_column_size(nodes,layers,columns,beams,EE):
         else:
             print("requirement value is over upper limit of column_list.")
             column.t = "Error"
+            column.r = "Error"
             column.A = "Error"
             column.Ix = "Error"
             column.Iy = "Error"
@@ -758,6 +760,7 @@ def calc_column_thickness(columns):
 
                 column.A = float(target_row['A'])
                 column.t = float(target_row['t'])
+                column.r = float(target_row['r'])
                 column.Ix = float(target_row['Ix'])
                 column.Iy = float(target_row['Iy'])
                 column.selected_section_no = float(target_row['No'])
@@ -796,7 +799,7 @@ def update_column_section(nodes,beams,columns,layers,EE):
     # 柱断面のグルーピング
     temp_list = map(lambda i: [columns[i].no, columns[i].H, columns[i].t, columns[i].story], range(len(columns)))
     table_columns = ["No", "H", "t", "story"]
-    group_data = make_group(temp_list, table_columns, str("story"), str("H"))  # グルーピング
+    group_data = make_group(temp_list, table_columns, str("story"), str("H"), str("t"))  # グルーピング
     column_groups = [member_class.Column_Group(*data) for data in group_data]  # グループのインスタンス定義
 
     return column_groups
