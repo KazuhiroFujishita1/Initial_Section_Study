@@ -243,7 +243,7 @@ canvasWidth : Float
 canvasWidth = 600.0
 
 canvasHeight : Float
-canvasHeight = 600.0
+canvasHeight = 500.0
 
 colors : List String
 colors = 
@@ -321,9 +321,9 @@ connectedSectionMarks model member =
     |> List.map (\m -> m.mark)
     |> uniqueBy (\mark -> mark)
 
--- 指定位置のダイアフラムをチェックする
-checkDiaphragmOnPosition : Model -> Position -> Bool
-checkDiaphragmOnPosition model position = 
+-- 指定位置のダイアフラムが要件を満たさない場合はTrue
+checkNotSatisfiedDiaphragmOnPosition : Model -> Position -> Bool
+checkNotSatisfiedDiaphragmOnPosition model position = 
     let
         members = jointMembers model position
         sectionNos =  
@@ -357,6 +357,11 @@ checkDiaphragmOnPosition model position =
     )
     |> List.all (\x -> x)
     |> not
+
+checkNotSatisfiedDiaphragmRelatedMember : Model -> Member -> Bool
+checkNotSatisfiedDiaphragmRelatedMember model member = 
+    checkNotSatisfiedDiaphragmOnPosition model member.start ||
+    checkNotSatisfiedDiaphragmOnPosition model member.end 
 
 
 positions : Model -> List Position
@@ -395,7 +400,7 @@ buildSectionConstraints model section =
 
         members = sectionMembers model section.no
 
-        selfSectionNo = section.no |> Debug.log "build section constraint no "
+        selfSectionNo = section.no 
 
         targetSectionNos = 
             members
@@ -404,14 +409,12 @@ buildSectionConstraints model section =
             )
             |> List.filter (\no -> no /= selfSectionNo)
             |> uniqueBy (\no -> no)
-            |> Debug.log "target section nos"
 
         targetDepths =  
             targetSectionNos
             |> List.filterMap (\no -> Dict.get no sectionMap)
             |> uniqueBy (\no -> no)
             |> List.map (\s -> round s.depth)
-            |> Debug.log "target depths"
 
         constraints =
             targetDepths
@@ -440,15 +443,12 @@ solveSectionConstraints section constraints =
 
         (lowerDepth, upperDepth) = 
             constraints
-            |> Debug.log ("constraints sec no" ++ String.fromInt section.no)
             |> List.foldl (\const (currentLowerDepth, currentUpperDepth) -> 
                 case const of
                     Range (lowerRangeInt, upperRangeInt) -> 
                         let
                             lowerRange = toFloat lowerRangeInt
-                                         |> Debug.log "lower range"
                             upperRange = toFloat upperRangeInt
-                                         |> Debug.log "upper range"
                         in
                         (
                             if upperRange <= selfDepth then max currentLowerDepth upperRange
@@ -476,29 +476,107 @@ solveDiaphragmConstraints count model =
 
         _ = count |> Debug.log "count"
 
-        sections = model.sections
     
         --
         sectionConstraints = 
-            sections
+            model.sections
             |> List.map (\section -> (section, buildSectionConstraints model section))
-            |> Debug.log "section constraints" 
 
-        --
-        solvedResults = 
+
+        -- 制約を満たさない断面結果一覧
+        unSatisfiedResults =    
             sectionConstraints
             |> List.map (\(section, constraints) -> solveSectionConstraints section constraints)
-            |> Debug.log "solved results" 
-
-        unSatisfiedResults =    
-            solvedResults |> List.filter (\result -> not result.isSatisfied)
-            |> Debug.log "unsatisfied" 
-
+            |> List.filter (\result -> not result.isSatisfied)
     in
     if List.length (unSatisfiedResults) == 0 || 10 <= count then
         model 
     else
         let
+    
+            {-
+              符号分岐の検討
+              実際には各階に波及させる必要があるので
+              全層に渡って制約を満たしている箇所であることを判断する必要がある
+            -}
+            unSatisfiedSecNoMap =
+                unSatisfiedResults
+                |> List.map (\result -> (result.section.no, result.section))
+                |> Dict.fromList 
+
+            copyNewSection : List Section -> Section -> Section  
+            copyNewSection orgSections baseSection = 
+                let
+                    getWithDefault defValue value = 
+                        case value of 
+                            Just v -> v
+                            Nothing -> defValue 
+                    maxNo  = orgSections |> List.map (\s -> s.no)
+                                         |> List.maximum  
+                                         |> getWithDefault 1
+                    nextNo = max 100 (maxNo + 1) 
+                        -- case (
+                        --     List.range 1 maxNo
+                        --     |> List.filter (\no -> not (List.any (\section -> section.no == no) orgSections))
+                        --     |> List.head
+                        -- ) of 
+                        --     Just no -> no
+                        --     Nothing -> maxNo + 1
+                        
+                in
+                { baseSection | no = nextNo }
+                |> Debug.log ("new section " ++ (String.fromInt baseSection.no) ++ " -> " ++ (String.fromInt nextNo) )
+
+            newSectionMap =
+                unSatisfiedResults
+                |> List.foldl (\result currentPairs -> 
+                    let
+                        currentSections = currentPairs |> List.map (\(_, section) -> section)
+
+                        newSection = copyNewSection currentSections result.section 
+                    in 
+                    (result.section.no, newSection) :: currentPairs
+                    
+                ) 
+                (model.sections |> List.map (\section -> (section.no, section)))
+                |> List.filter (\(secNo, newSection) -> 
+                    case Dict.get secNo unSatisfiedSecNoMap of
+                        Just _   -> secNo /= newSection.no 
+                        Nothing  -> False
+                )
+                |> Debug.log "new section map"
+                |> Dict.fromList
+
+            (newMembers, newSections) = 
+                model.members
+                |> List.foldl (\m (members, sections) ->
+                    case Dict.get m.mark newSectionMap of
+                        Just newSection -> 
+                            if checkNotSatisfiedDiaphragmRelatedMember model m 
+                            then  (m :: members, sections) 
+                            else
+                                let
+                                    _ = newSection 
+                                        |> Debug.log ("add new mark " ++ (String.fromInt newSection.no))
+                                    _ = m |> Debug.log "member"
+                                in
+                                (
+                                    { m | mark = newSection.no } :: members,
+                                    if List.any (\sec -> sec.no == newSection.no) sections
+                                    then sections
+                                    else 
+                                        newSection :: sections
+                                )
+                        Nothing -> 
+                            (m :: members, sections)
+
+                ) ([], model.sections)
+                |> \(ms, ss) -> 
+                    (
+                        List.reverse ms , 
+                        List.reverse ss
+                    ) 
+
             -- 最も差分が小さいものを選択
             targetMaybe =
                 unSatisfiedResults
@@ -508,11 +586,11 @@ solveDiaphragmConstraints count model =
                 )
                 |> List.sortBy (\(result, depth) -> abs (depth - result.section.depth))
                 |> List.head
-            newSections =
+            newUpdatedSections =
                 case targetMaybe of
-                    Nothing -> model.sections
+                    Nothing -> newSections 
                     Just (targetResult, newDepth) ->
-                        model.sections
+                        newSections
                         |> List.map (\section ->
                             if section.no == targetResult.section.no 
                             then 
@@ -530,7 +608,8 @@ solveDiaphragmConstraints count model =
         in
 
         -- 再帰
-        solveDiaphragmConstraints (count + 1) { model | sections = newSections }
+        solveDiaphragmConstraints (count + 1) { model | members = newMembers
+                                                      , sections = newUpdatedSections }
 
 
     
@@ -544,6 +623,7 @@ viewPlan model =
         sectionMap : Dict Int (Section, String)
         sectionMap =
             model.sections
+            |> List.sortBy (\sec -> sec.no)
             |> List.indexedMap (\index s -> 
                 let
                     color = 
@@ -629,7 +709,7 @@ viewPlan model =
         
         jointCheck = 
             positions model
-            |> List.filter (checkDiaphragmOnPosition model)
+            |> List.filter (checkNotSatisfiedDiaphragmOnPosition model)
             |> List.map (\position ->
                 let
                     (x, y) = getCoord model position 

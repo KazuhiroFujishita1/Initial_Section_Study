@@ -5296,7 +5296,7 @@ var $author$project$Main$update = F2(
 	function (msg, model) {
 		return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 	});
-var $author$project$Main$canvasHeight = 600.0;
+var $author$project$Main$canvasHeight = 500.0;
 var $author$project$Main$canvasWidth = 600.0;
 var $elm$json$Json$Encode$string = _Json_wrap;
 var $elm$html$Html$Attributes$stringProperty = F2(
@@ -5321,6 +5321,27 @@ var $author$project$Main$Up = {$: 'Up'};
 var $elm$core$Basics$abs = function (n) {
 	return (n < 0) ? (-n) : n;
 };
+var $elm$core$List$any = F2(
+	function (isOkay, list) {
+		any:
+		while (true) {
+			if (!list.b) {
+				return false;
+			} else {
+				var x = list.a;
+				var xs = list.b;
+				if (isOkay(x)) {
+					return true;
+				} else {
+					var $temp$isOkay = isOkay,
+						$temp$list = xs;
+					isOkay = $temp$isOkay;
+					list = $temp$list;
+					continue any;
+				}
+			}
+		}
+	});
 var $author$project$Main$AllRange = {$: 'AllRange'};
 var $author$project$Main$Range = function (a) {
 	return {$: 'Range', a: a};
@@ -5367,27 +5388,6 @@ var $author$project$Main$connectedMembers = F2(
 					return !_Utils_eq(m, target);
 				},
 				model.members));
-	});
-var $elm$core$List$any = F2(
-	function (isOkay, list) {
-		any:
-		while (true) {
-			if (!list.b) {
-				return false;
-			} else {
-				var x = list.a;
-				var xs = list.b;
-				if (isOkay(x)) {
-					return true;
-				} else {
-					var $temp$isOkay = isOkay,
-						$temp$list = xs;
-					isOkay = $temp$isOkay;
-					list = $temp$list;
-					continue any;
-				}
-			}
-		}
 	});
 var $elm$core$List$member = F2(
 	function (x, xs) {
@@ -5604,7 +5604,6 @@ var $elm$core$Dict$get = F2(
 			}
 		}
 	});
-var $elm$core$Debug$log = _Debug_log;
 var $author$project$Main$Impossible = {$: 'Impossible'};
 var $elm$core$Basics$min = F2(
 	function (x, y) {
@@ -5698,7 +5697,7 @@ var $author$project$Main$sectionMembers = F2(
 	});
 var $author$project$Main$buildSectionConstraints = F2(
 	function (model, section) {
-		var selfSectionNo = A2($elm$core$Debug$log, 'build section constraint no ', section.no);
+		var selfSectionNo = section.no;
 		var sectionMap = $elm$core$Dict$fromList(
 			A2(
 				$elm$core$List$map,
@@ -5708,43 +5707,37 @@ var $author$project$Main$buildSectionConstraints = F2(
 				model.sections));
 		var members = A2($author$project$Main$sectionMembers, model, section.no);
 		var targetSectionNos = A2(
-			$elm$core$Debug$log,
-			'target section nos',
+			$elm_community$list_extra$List$Extra$uniqueBy,
+			function (no) {
+				return no;
+			},
+			A2(
+				$elm$core$List$filter,
+				function (no) {
+					return !_Utils_eq(no, selfSectionNo);
+				},
+				A2(
+					$elm$core$List$concatMap,
+					function (m) {
+						return A2($author$project$Main$connectedSectionMarks, model, m);
+					},
+					members)));
+		var targetDepths = A2(
+			$elm$core$List$map,
+			function (s) {
+				return $elm$core$Basics$round(s.depth);
+			},
 			A2(
 				$elm_community$list_extra$List$Extra$uniqueBy,
 				function (no) {
 					return no;
 				},
 				A2(
-					$elm$core$List$filter,
+					$elm$core$List$filterMap,
 					function (no) {
-						return !_Utils_eq(no, selfSectionNo);
+						return A2($elm$core$Dict$get, no, sectionMap);
 					},
-					A2(
-						$elm$core$List$concatMap,
-						function (m) {
-							return A2($author$project$Main$connectedSectionMarks, model, m);
-						},
-						members))));
-		var targetDepths = A2(
-			$elm$core$Debug$log,
-			'target depths',
-			A2(
-				$elm$core$List$map,
-				function (s) {
-					return $elm$core$Basics$round(s.depth);
-				},
-				A2(
-					$elm_community$list_extra$List$Extra$uniqueBy,
-					function (no) {
-						return no;
-					},
-					A2(
-						$elm$core$List$filterMap,
-						function (no) {
-							return A2($elm$core$Dict$get, no, sectionMap);
-						},
-						targetSectionNos))));
+					targetSectionNos)));
 		var constraints = A3(
 			$elm$core$List$foldl,
 			$author$project$Main$mergeConstraints,
@@ -5753,179 +5746,12 @@ var $author$project$Main$buildSectionConstraints = F2(
 			A2($elm$core$List$map, $author$project$Main$buildConstraint, targetDepths));
 		return constraints;
 	});
-var $elm$core$List$head = function (list) {
-	if (list.b) {
-		var x = list.a;
-		var xs = list.b;
-		return $elm$core$Maybe$Just(x);
-	} else {
-		return $elm$core$Maybe$Nothing;
-	}
-};
-var $elm$core$Basics$not = _Basics_not;
-var $author$project$Main$checkConstraint = F2(
-	function (depth, _const) {
-		switch (_const.$) {
-			case 'AllRange':
-				return true;
-			case 'Impossible':
-				return false;
-			default:
-				var _v1 = _const.a;
-				var lower = _v1.a;
-				var upper = _v1.b;
-				var depthRounded = $elm$core$Basics$round(depth);
-				return (_Utils_cmp(lower, depthRounded) < 1) && (_Utils_cmp(depthRounded, upper) < 1);
-		}
-	});
-var $author$project$Main$solveSectionConstraints = F2(
-	function (section, constraints) {
-		var selfDepth = section.depth;
-		var isSatisfied = $elm$core$List$length(
-			A2(
-				$elm$core$List$filter,
-				$author$project$Main$checkConstraint(selfDepth),
-				constraints)) > 0;
-		var _v0 = A3(
-			$elm$core$List$foldl,
-			F2(
-				function (_const, _v1) {
-					var currentLowerDepth = _v1.a;
-					var currentUpperDepth = _v1.b;
-					if (_const.$ === 'Range') {
-						var _v3 = _const.a;
-						var lowerRangeInt = _v3.a;
-						var upperRangeInt = _v3.b;
-						var upperRange = A2($elm$core$Debug$log, 'upper range', upperRangeInt);
-						var lowerRange = A2($elm$core$Debug$log, 'lower range', lowerRangeInt);
-						return _Utils_Tuple2(
-							(_Utils_cmp(upperRange, selfDepth) < 1) ? A2($elm$core$Basics$max, currentLowerDepth, upperRange) : currentLowerDepth,
-							(_Utils_cmp(selfDepth, lowerRange) < 1) ? A2($elm$core$Basics$min, currentUpperDepth, lowerRange) : currentUpperDepth);
-					} else {
-						return _Utils_Tuple2(currentLowerDepth, currentUpperDepth);
-					}
-				}),
-			_Utils_Tuple2(0.0, $author$project$Main$limitDepth),
-			A2(
-				$elm$core$Debug$log,
-				'constraints sec no' + $elm$core$String$fromInt(section.no),
-				constraints));
-		var lowerDepth = _v0.a;
-		var upperDepth = _v0.b;
-		return {
-			candidates: isSatisfied ? _List_fromArray(
-				[selfDepth]) : A2(
-				$elm_community$list_extra$List$Extra$uniqueBy,
-				function (x) {
-					return x;
-				},
-				_List_fromArray(
-					[lowerDepth, upperDepth])),
-			isSatisfied: isSatisfied,
-			section: section
-		};
-	});
-var $elm$core$List$sortBy = _List_sortBy;
-var $author$project$Main$solveDiaphragmConstraints = F2(
-	function (count, model) {
-		solveDiaphragmConstraints:
-		while (true) {
-			var sections = model.sections;
-			var sectionConstraints = A2(
-				$elm$core$Debug$log,
-				'section constraints',
-				A2(
-					$elm$core$List$map,
-					function (section) {
-						return _Utils_Tuple2(
-							section,
-							A2($author$project$Main$buildSectionConstraints, model, section));
-					},
-					sections));
-			var solvedResults = A2(
-				$elm$core$Debug$log,
-				'solved results',
-				A2(
-					$elm$core$List$map,
-					function (_v4) {
-						var section = _v4.a;
-						var constraints = _v4.b;
-						return A2($author$project$Main$solveSectionConstraints, section, constraints);
-					},
-					sectionConstraints));
-			var unSatisfiedResults = A2(
-				$elm$core$Debug$log,
-				'unsatisfied',
-				A2(
-					$elm$core$List$filter,
-					function (result) {
-						return !result.isSatisfied;
-					},
-					solvedResults));
-			var _v0 = A2($elm$core$Debug$log, 'count', count);
-			if ((!$elm$core$List$length(unSatisfiedResults)) || (10 <= count)) {
-				return model;
-			} else {
-				var targetMaybe = $elm$core$List$head(
-					A2(
-						$elm$core$List$sortBy,
-						function (_v3) {
-							var result = _v3.a;
-							var depth = _v3.b;
-							return $elm$core$Basics$abs(depth - result.section.depth);
-						},
-						A2(
-							$elm$core$List$concatMap,
-							function (result) {
-								return A2(
-									$elm$core$List$map,
-									function (candidateDepth) {
-										return _Utils_Tuple2(result, candidateDepth);
-									},
-									result.candidates);
-							},
-							unSatisfiedResults)));
-				var newSections = function () {
-					if (targetMaybe.$ === 'Nothing') {
-						return model.sections;
-					} else {
-						var _v2 = targetMaybe.a;
-						var targetResult = _v2.a;
-						var newDepth = _v2.b;
-						return A2(
-							$elm$core$List$map,
-							function (section) {
-								return _Utils_eq(section.no, targetResult.section.no) ? _Utils_update(
-									section,
-									{
-										depth: newDepth,
-										updated: (0.0 < (newDepth - section.depth)) ? $author$project$Main$Up : (((newDepth - section.depth) < 0.0) ? $author$project$Main$Down : $author$project$Main$Same)
-									}) : section;
-							},
-							model.sections);
-					}
-				}();
-				var $temp$count = count + 1,
-					$temp$model = _Utils_update(
-					model,
-					{sections: newSections});
-				count = $temp$count;
-				model = $temp$model;
-				continue solveDiaphragmConstraints;
-			}
-		}
-	});
-var $elm$svg$Svg$Attributes$stroke = _VirtualDom_attribute('stroke');
-var $elm$svg$Svg$Attributes$strokeWidth = _VirtualDom_attribute('stroke-width');
-var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
-var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
-var $elm$svg$Svg$svg = $elm$svg$Svg$trustedNode('svg');
-var $elm$svg$Svg$Attributes$viewBox = _VirtualDom_attribute('viewBox');
 var $elm$core$Basics$composeL = F3(
 	function (g, f, x) {
 		return g(
 			f(x));
 	});
+var $elm$core$Basics$not = _Basics_not;
 var $elm$core$List$all = F2(
 	function (isOkay, list) {
 		return !A2(
@@ -5947,7 +5773,7 @@ var $author$project$Main$jointMembers = F2(
 			},
 			model.members);
 	});
-var $author$project$Main$checkDiaphragmOnPosition = F2(
+var $author$project$Main$checkNotSatisfiedDiaphragmOnPosition = F2(
 	function (model, position) {
 		var sectionMap = $elm$core$Dict$fromList(
 			A2(
@@ -6017,6 +5843,300 @@ var $author$project$Main$checkDiaphragmOnPosition = F2(
 					},
 					sectionNoPairs)));
 	});
+var $author$project$Main$checkNotSatisfiedDiaphragmRelatedMember = F2(
+	function (model, member) {
+		return A2($author$project$Main$checkNotSatisfiedDiaphragmOnPosition, model, member.start) || A2($author$project$Main$checkNotSatisfiedDiaphragmOnPosition, model, member.end);
+	});
+var $elm$core$List$head = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(x);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $elm$core$Debug$log = _Debug_log;
+var $elm$core$List$maximum = function (list) {
+	if (list.b) {
+		var x = list.a;
+		var xs = list.b;
+		return $elm$core$Maybe$Just(
+			A3($elm$core$List$foldl, $elm$core$Basics$max, x, xs));
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $author$project$Main$checkConstraint = F2(
+	function (depth, _const) {
+		switch (_const.$) {
+			case 'AllRange':
+				return true;
+			case 'Impossible':
+				return false;
+			default:
+				var _v1 = _const.a;
+				var lower = _v1.a;
+				var upper = _v1.b;
+				var depthRounded = $elm$core$Basics$round(depth);
+				return (_Utils_cmp(lower, depthRounded) < 1) && (_Utils_cmp(depthRounded, upper) < 1);
+		}
+	});
+var $author$project$Main$solveSectionConstraints = F2(
+	function (section, constraints) {
+		var selfDepth = section.depth;
+		var isSatisfied = $elm$core$List$length(
+			A2(
+				$elm$core$List$filter,
+				$author$project$Main$checkConstraint(selfDepth),
+				constraints)) > 0;
+		var _v0 = A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_const, _v1) {
+					var currentLowerDepth = _v1.a;
+					var currentUpperDepth = _v1.b;
+					if (_const.$ === 'Range') {
+						var _v3 = _const.a;
+						var lowerRangeInt = _v3.a;
+						var upperRangeInt = _v3.b;
+						var upperRange = upperRangeInt;
+						var lowerRange = lowerRangeInt;
+						return _Utils_Tuple2(
+							(_Utils_cmp(upperRange, selfDepth) < 1) ? A2($elm$core$Basics$max, currentLowerDepth, upperRange) : currentLowerDepth,
+							(_Utils_cmp(selfDepth, lowerRange) < 1) ? A2($elm$core$Basics$min, currentUpperDepth, lowerRange) : currentUpperDepth);
+					} else {
+						return _Utils_Tuple2(currentLowerDepth, currentUpperDepth);
+					}
+				}),
+			_Utils_Tuple2(0.0, $author$project$Main$limitDepth),
+			constraints);
+		var lowerDepth = _v0.a;
+		var upperDepth = _v0.b;
+		return {
+			candidates: isSatisfied ? _List_fromArray(
+				[selfDepth]) : A2(
+				$elm_community$list_extra$List$Extra$uniqueBy,
+				function (x) {
+					return x;
+				},
+				_List_fromArray(
+					[lowerDepth, upperDepth])),
+			isSatisfied: isSatisfied,
+			section: section
+		};
+	});
+var $elm$core$List$sortBy = _List_sortBy;
+var $author$project$Main$solveDiaphragmConstraints = F2(
+	function (count, model) {
+		solveDiaphragmConstraints:
+		while (true) {
+			var sectionConstraints = A2(
+				$elm$core$List$map,
+				function (section) {
+					return _Utils_Tuple2(
+						section,
+						A2($author$project$Main$buildSectionConstraints, model, section));
+				},
+				model.sections);
+			var unSatisfiedResults = A2(
+				$elm$core$List$filter,
+				function (result) {
+					return !result.isSatisfied;
+				},
+				A2(
+					$elm$core$List$map,
+					function (_v14) {
+						var section = _v14.a;
+						var constraints = _v14.b;
+						return A2($author$project$Main$solveSectionConstraints, section, constraints);
+					},
+					sectionConstraints));
+			var _v0 = A2($elm$core$Debug$log, 'count', count);
+			if ((!$elm$core$List$length(unSatisfiedResults)) || (10 <= count)) {
+				return model;
+			} else {
+				var unSatisfiedSecNoMap = $elm$core$Dict$fromList(
+					A2(
+						$elm$core$List$map,
+						function (result) {
+							return _Utils_Tuple2(result.section.no, result.section);
+						},
+						unSatisfiedResults));
+				var targetMaybe = $elm$core$List$head(
+					A2(
+						$elm$core$List$sortBy,
+						function (_v13) {
+							var result = _v13.a;
+							var depth = _v13.b;
+							return $elm$core$Basics$abs(depth - result.section.depth);
+						},
+						A2(
+							$elm$core$List$concatMap,
+							function (result) {
+								return A2(
+									$elm$core$List$map,
+									function (candidateDepth) {
+										return _Utils_Tuple2(result, candidateDepth);
+									},
+									result.candidates);
+							},
+							unSatisfiedResults)));
+				var copyNewSection = F2(
+					function (orgSections, baseSection) {
+						var getWithDefault = F2(
+							function (defValue, value) {
+								if (value.$ === 'Just') {
+									var v = value.a;
+									return v;
+								} else {
+									return defValue;
+								}
+							});
+						var maxNo = A2(
+							getWithDefault,
+							1,
+							$elm$core$List$maximum(
+								A2(
+									$elm$core$List$map,
+									function (s) {
+										return s.no;
+									},
+									orgSections)));
+						var nextNo = A2($elm$core$Basics$max, 100, maxNo + 1);
+						return A2(
+							$elm$core$Debug$log,
+							'new section ' + ($elm$core$String$fromInt(baseSection.no) + (' -> ' + $elm$core$String$fromInt(nextNo))),
+							_Utils_update(
+								baseSection,
+								{no: nextNo}));
+					});
+				var newSectionMap = $elm$core$Dict$fromList(
+					A2(
+						$elm$core$Debug$log,
+						'new section map',
+						A2(
+							$elm$core$List$filter,
+							function (_v10) {
+								var secNo = _v10.a;
+								var newSection = _v10.b;
+								var _v11 = A2($elm$core$Dict$get, secNo, unSatisfiedSecNoMap);
+								if (_v11.$ === 'Just') {
+									return !_Utils_eq(secNo, newSection.no);
+								} else {
+									return false;
+								}
+							},
+							A3(
+								$elm$core$List$foldl,
+								F2(
+									function (result, currentPairs) {
+										var currentSections = A2(
+											$elm$core$List$map,
+											function (_v9) {
+												var section = _v9.b;
+												return section;
+											},
+											currentPairs);
+										var newSection = A2(copyNewSection, currentSections, result.section);
+										return A2(
+											$elm$core$List$cons,
+											_Utils_Tuple2(result.section.no, newSection),
+											currentPairs);
+									}),
+								A2(
+									$elm$core$List$map,
+									function (section) {
+										return _Utils_Tuple2(section.no, section);
+									},
+									model.sections),
+								unSatisfiedResults))));
+				var _v1 = function (_v6) {
+					var ms = _v6.a;
+					var ss = _v6.b;
+					return _Utils_Tuple2(
+						$elm$core$List$reverse(ms),
+						$elm$core$List$reverse(ss));
+				}(
+					A3(
+						$elm$core$List$foldl,
+						F2(
+							function (m, _v2) {
+								var members = _v2.a;
+								var sections = _v2.b;
+								var _v3 = A2($elm$core$Dict$get, m.mark, newSectionMap);
+								if (_v3.$ === 'Just') {
+									var newSection = _v3.a;
+									if (A2($author$project$Main$checkNotSatisfiedDiaphragmRelatedMember, model, m)) {
+										return _Utils_Tuple2(
+											A2($elm$core$List$cons, m, members),
+											sections);
+									} else {
+										var _v4 = A2(
+											$elm$core$Debug$log,
+											'add new mark ' + $elm$core$String$fromInt(newSection.no),
+											newSection);
+										var _v5 = A2($elm$core$Debug$log, 'member', m);
+										return _Utils_Tuple2(
+											A2(
+												$elm$core$List$cons,
+												_Utils_update(
+													m,
+													{mark: newSection.no}),
+												members),
+											A2(
+												$elm$core$List$any,
+												function (sec) {
+													return _Utils_eq(sec.no, newSection.no);
+												},
+												sections) ? sections : A2($elm$core$List$cons, newSection, sections));
+									}
+								} else {
+									return _Utils_Tuple2(
+										A2($elm$core$List$cons, m, members),
+										sections);
+								}
+							}),
+						_Utils_Tuple2(_List_Nil, model.sections),
+						model.members));
+				var newMembers = _v1.a;
+				var newSections = _v1.b;
+				var newUpdatedSections = function () {
+					if (targetMaybe.$ === 'Nothing') {
+						return newSections;
+					} else {
+						var _v8 = targetMaybe.a;
+						var targetResult = _v8.a;
+						var newDepth = _v8.b;
+						return A2(
+							$elm$core$List$map,
+							function (section) {
+								return _Utils_eq(section.no, targetResult.section.no) ? _Utils_update(
+									section,
+									{
+										depth: newDepth,
+										updated: (0.0 < (newDepth - section.depth)) ? $author$project$Main$Up : (((newDepth - section.depth) < 0.0) ? $author$project$Main$Down : $author$project$Main$Same)
+									}) : section;
+							},
+							newSections);
+					}
+				}();
+				var $temp$count = count + 1,
+					$temp$model = _Utils_update(
+					model,
+					{members: newMembers, sections: newUpdatedSections});
+				count = $temp$count;
+				model = $temp$model;
+				continue solveDiaphragmConstraints;
+			}
+		}
+	});
+var $elm$svg$Svg$Attributes$stroke = _VirtualDom_attribute('stroke');
+var $elm$svg$Svg$Attributes$strokeWidth = _VirtualDom_attribute('stroke-width');
+var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
+var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
+var $elm$svg$Svg$svg = $elm$svg$Svg$trustedNode('svg');
+var $elm$svg$Svg$Attributes$viewBox = _VirtualDom_attribute('viewBox');
 var $elm$svg$Svg$circle = $elm$svg$Svg$trustedNode('circle');
 var $elm$svg$Svg$Attributes$color = _VirtualDom_attribute('color');
 var $author$project$Main$colors = _List_fromArray(
@@ -6101,7 +6221,12 @@ var $author$project$Main$viewPlan = function (model) {
 						s.no,
 						_Utils_Tuple2(s, color));
 				}),
-			model.sections));
+			A2(
+				$elm$core$List$sortBy,
+				function (sec) {
+					return sec.no;
+				},
+				model.sections)));
 	var members = A2(
 		$elm$core$List$concatMap,
 		function (member) {
@@ -6237,7 +6362,7 @@ var $author$project$Main$viewPlan = function (model) {
 		},
 		A2(
 			$elm$core$List$filter,
-			$author$project$Main$checkDiaphragmOnPosition(model),
+			$author$project$Main$checkNotSatisfiedDiaphragmOnPosition(model),
 			$author$project$Main$positions(model)));
 	var svgContents = $elm$core$List$concat(
 		_List_fromArray(
