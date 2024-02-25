@@ -5214,6 +5214,7 @@ var $author$project$Main$generateMembers = F2(
 					}),
 				markList));
 	});
+var $elm$core$Debug$log = _Debug_log;
 var $author$project$Main$defaultModel = function () {
 	var yFrames = _List_fromArray(
 		[
@@ -5275,11 +5276,14 @@ var $author$project$Main$defaultModel = function () {
 	var members = $elm$core$List$concat(
 		_List_fromArray(
 			[xMembers, yMembers]));
-	return {
-		members: members,
-		plan: {xAxisCount: 5, yAxisCount: 4},
-		sections: sections
-	};
+	return A2(
+		$elm$core$Debug$log,
+		'default model',
+		{
+			members: members,
+			plan: {xAxisCount: 5, yAxisCount: 4},
+			sections: sections
+		});
 }();
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
@@ -5856,7 +5860,6 @@ var $elm$core$List$head = function (list) {
 		return $elm$core$Maybe$Nothing;
 	}
 };
-var $elm$core$Debug$log = _Debug_log;
 var $elm$core$List$maximum = function (list) {
 	if (list.b) {
 		var x = list.a;

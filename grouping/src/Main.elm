@@ -58,6 +58,7 @@ type alias Model =
     , sections : List Section
     }
 
+
 type Constraint 
     = Range (Int, Int)
     | AllRange 
@@ -202,6 +203,7 @@ defaultModel =
     , members = members
     , sections = sections
     }
+    |> Debug.log "default model"
 
 type Msg 
     = None
