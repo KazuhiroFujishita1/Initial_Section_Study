@@ -549,35 +549,40 @@ solveDiaphragmConstraints count model =
                 |> Debug.log "new section map"
                 |> Dict.fromList
 
-            (newMembers, newSections) = 
-                model.members
-                |> List.foldl (\m (members, sections) ->
-                    case Dict.get m.mark newSectionMap of
-                        Just newSection -> 
-                            if checkNotSatisfiedDiaphragmRelatedMember model m 
-                            then  (m :: members, sections) 
-                            else
-                                let
-                                    _ = newSection 
-                                        |> Debug.log ("add new mark " ++ (String.fromInt newSection.no))
-                                    _ = m |> Debug.log "member"
-                                in
-                                (
-                                    { m | mark = newSection.no } :: members,
-                                    if List.any (\sec -> sec.no == newSection.no) sections
-                                    then sections
-                                    else 
-                                        newSection :: sections
-                                )
-                        Nothing -> 
-                            (m :: members, sections)
+            enabledMarkChange = True
+            --enabledMarkChange = False
+            (newMembers, newSections) =
+                if enabledMarkChange then 
+                    model.members
+                    |> List.foldl (\m (members, sections) ->
+                        case Dict.get m.mark newSectionMap of
+                            Just newSection -> 
+                                if checkNotSatisfiedDiaphragmRelatedMember model m 
+                                then  (m :: members, sections) 
+                                else
+                                    let
+                                        _ = newSection 
+                                            |> Debug.log ("add new mark " ++ (String.fromInt newSection.no))
+                                        _ = m |> Debug.log "member"
+                                    in
+                                    (
+                                        { m | mark = newSection.no } :: members,
+                                        if List.any (\sec -> sec.no == newSection.no) sections
+                                        then sections
+                                        else 
+                                            newSection :: sections
+                                    )
+                            Nothing -> 
+                                (m :: members, sections)
 
-                ) ([], model.sections)
-                |> \(ms, ss) -> 
-                    (
-                        List.reverse ms , 
-                        List.reverse ss
-                    ) 
+                    ) ([], model.sections)
+                    |> \(ms, ss) -> 
+                        (
+                            List.reverse ms , 
+                            List.reverse ss
+                        )
+                else
+                    (model.members, model.sections) 
 
             -- 最も差分が小さいものを選択
             targetMaybe =

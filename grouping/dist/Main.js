@@ -5985,6 +5985,7 @@ var $author$project$Main$solveDiaphragmConstraints = F2(
 									result.candidates);
 							},
 							unSatisfiedResults)));
+				var enabledMarkChange = true;
 				var copyNewSection = F2(
 					function (orgSections, baseSection) {
 						var getWithDefault = F2(
@@ -6054,7 +6055,7 @@ var $author$project$Main$solveDiaphragmConstraints = F2(
 									},
 									model.sections),
 								unSatisfiedResults))));
-				var _v1 = function (_v6) {
+				var _v1 = enabledMarkChange ? function (_v6) {
 					var ms = _v6.a;
 					var ss = _v6.b;
 					return _Utils_Tuple2(
@@ -6101,7 +6102,7 @@ var $author$project$Main$solveDiaphragmConstraints = F2(
 								}
 							}),
 						_Utils_Tuple2(_List_Nil, model.sections),
-						model.members));
+						model.members)) : _Utils_Tuple2(model.members, model.sections);
 				var newMembers = _v1.a;
 				var newSections = _v1.b;
 				var newUpdatedSections = function () {
