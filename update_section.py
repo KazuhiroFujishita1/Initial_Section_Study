@@ -74,25 +74,20 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
         beam_group.neighbor_group = temp4
         beam_group.neighbor_group_no = temp5
 
-    #比較する順序を設定（梁高さが大きいものから順に比較）
-    # for group in beam_groups:
-    #     group.neighbor_group = sorted(group.neighbor_group,reverse=True)#各節点で大きいものから比較するため隣接梁のリストは降順に並べる）
-    #     print(group.group_name,group.neighbor_group,group.no)
-
     # 各梁グループについて、隣接する梁のグループのせいとの関係性を調べる（小さい差の調整）
-    group_no =0
-    while group_no < len(beam_groups):
-        test_H = beams[beam_groups[group_no].ID[0] - 1].H  # グループに属する梁のせい
-        for j in beam_groups[group_no].neighbor_group_no:
-            neighbor_H = beams[beam_groups[j - 1].ID[0] - 1].H  # 隣接する梁グループに属する梁のせい
+    for beam_group in beam_groups:
+        print(beam_group.group_name)
+        test_H = beams[beam_group.ID[0] - 1].H  # グループに属する梁のせい
+        for j in beam_group.neighbor_group_no:
+            neighbor_H = beams[beam_groups[j-1].ID[0] - 1].H  # 隣接する梁グループに属する梁のせい
             # 梁高さの差が150mm以内の場合なら小さい方の梁せいを合わせにいく(588と600の隣接はOK）(2/7 revised)
             if abs(float(test_H) - float(neighbor_H)) > 5 \
                     and abs(float(test_H) - float(neighbor_H)) <= 150:
                 # 算定梁せいに適合する梁の選定
                 if float(test_H) >= float(neighbor_H):
                     filtered_beam_list = selected_beam_list[
-                        (selected_beam_list['H'] == test_H) & (selected_beam_list['Zp'] >= beams[beam_groups[group_no].ID[0] - 1].Zp)]
-                    for k in beam_groups[j - 1].ID:
+                        (selected_beam_list['H'] == test_H) & (selected_beam_list['Zp'] >= beams[beam_group.ID[0] - 1].Zp)]
+                    for k in beam_groups[j-1].ID:
                         beams[k - 1].I = float(list(filtered_beam_list['Ix'])[0])
                         beams[k - 1].selected_section_no = float(list(filtered_beam_list['No'])[0])
                         beams[k - 1].H = float(list(filtered_beam_list['H'])[0])
@@ -103,11 +98,12 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
                         beams[k - 1].Zp = float(list(filtered_beam_list['Zp'])[0])
                         beams[k - 1].r = float(list(filtered_beam_list['r'])[0])
                         #beams[k - 1].F = float(list(filtered_beam_list['F'])[0])ここで変更した場合材質はオリジナルのまま（2/7 revised）
-                    #break  # 2重ループから抜ける
+                    del beam_group
+                    break  # 2重ループから抜ける
                 else:
                     filtered_beam_list = selected_beam_list[(selected_beam_list['H'] == neighbor_H) & (
-                                selected_beam_list['Zp'] >= beams[beam_groups[j - 1].ID[0] - 1].Zp)]
-                    for k in beam_groups[group_no].ID:
+                                selected_beam_list['Zp'] >= beams[j - 1].Zp)]
+                    for k in beam_group.ID:
                         beams[k - 1].I = float(list(filtered_beam_list['Ix'])[0])
                         beams[k - 1].selected_section_no = float(list(filtered_beam_list['No'])[0])
                         beams[k - 1].H = float(list(filtered_beam_list['H'])[0])
@@ -118,15 +114,16 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
                         beams[k - 1].Zp = float(list(filtered_beam_list['Zp'])[0])
                         beams[k - 1].r = float(list(filtered_beam_list['r'])[0])
                         #beams[k - 1].F = float(list(filtered_beam_list['F'])[0])ここで変更した場合材質はオリジナルのまま（2/7 revised）
-                    #break  # 2重ループから抜ける
-        group_no += 1#梁成を更新しない場合次のグループをチェック
+                    del beam_group.neighbor_group_no
+                    break  # 2重ループから抜ける
 
     # 梁断面の再グルーピング
-    temp_list = [[beams[i].no, beams[i].H, beams[i].B, beams[i].story]
-                 for i in range(len(beams))]
-    table_columns = ["No", "H", "B", "story"]
-    group_data = make_group(temp_list, table_columns, str("story"), str("H"), str("B"))  # グルーピング
-    beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
+    #temp_list = [[beams[i].no, beams[i].H, beams[i].B, beams[i].story]
+    #             for i in range(len(beams))]
+    #table_columns = ["No", "H", "B", "story"]
+    #group_data = make_group(temp_list, table_columns, str("story"), str("H"), str("B"))  # グルーピング
+    #beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
+
 
     # # 各梁グループが隣接する梁を調べる
     # for beam_group in beam_groups:
@@ -652,21 +649,21 @@ def member_strength_check(nodes,beams,columns,layers):
         #柱の上側に取りつく梁の両端ヒンジ時のせん断力の差分がはりの剪断力による軸力となる
         if len(temp) == 1:
             Mp_beam = beams[temp[0]-1].Zp*10**9*beams[temp[0]-1].F/(10**6)
-            column.temp_axial_column_x_Mp = Mp_beam*2/beams[temp[0]-1].length
+            column.temp_axial_column_x_Mp = Mp_beam*2/beams[temp[0]-1].length/2
         elif len(temp) == 2:
             Mp_beam1 = beams[temp[0]-1].Zp*10**9*beams[temp[0]-1].F/(10**6)
             Mp_beam2 = beams[temp[1]-1].Zp*10**9*beams[temp[1]-1].F/(10**6)
-            column.temp_axial_column_x_Mp = abs(Mp_beam1*2/beams[temp[0]-1].length
-                                                -Mp_beam2*2/beams[temp[1]-1].length)
+            column.temp_axial_column_x_Mp = abs(Mp_beam1*2/beams[temp[0]-1].length/2
+                                                -Mp_beam2*2/beams[temp[1]-1].length/2)
 
         if len(temp2) == 1:
             Mp_beam = beams[temp2[0]-1].Zp*10**9*beams[temp2[0]-1].F/(10**6)
-            column.temp_axial_column_y_Mp = Mp_beam*2/beams[temp2[0]-1].length
+            column.temp_axial_column_y_Mp = Mp_beam*2/beams[temp2[0]-1].length/2
         elif len(temp2) == 2:
             Mp_beam1 = beams[temp2[0]-1].Zp*10**9*beams[temp2[0]-1].F/(10**6)
             Mp_beam2 = beams[temp2[1]-1].Zp*10**9*beams[temp2[1]-1].F/(10**6)
-            column.temp_axial_column_y_Mp = abs(Mp_beam1*2/beams[temp2[0]-1].length
-                                                -Mp_beam2*2/beams[temp2[1]-1].length)
+            column.temp_axial_column_y_Mp = abs(Mp_beam1*2/beams[temp2[0]-1].length/2
+                                                -Mp_beam2*2/beams[temp2[1]-1].length/2)
 
         #上の層の柱の軸力から順に足す
     D_sum_x =np.zeros(len(layers))
@@ -784,6 +781,7 @@ def calc_limit_column_size(nodes,layers,columns,beams,EE):
         #柱リストより得られた各諸元以上のキャパシティを有する柱断面の選定
         filtered_data = column_list[(column_list['Mpx'] > minimum_Mpx) & (column_list['Mpy'] > minimum_Mpy)
                                     & (column_list['Ix'] > minimum_Ix) & (column_list['Iy'] > minimum_Iy)]
+
         if len(filtered_data) >= 1:#選定リストから選べる場合
             column.minimum_selected_section_no = list(filtered_data['No'])[0]
 

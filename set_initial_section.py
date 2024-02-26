@@ -18,16 +18,16 @@ def make_group(list,list_name,key1,key2,key3):
     for name, group in sorted_frame.groupby([key1]):
         for name2, group2 in group.groupby([key2]):
             for name3, group3 in group2.groupby([key3]):
-                group_data.append((temp, str(name) + 'F_' + str(name2) + '_' + str(name3), group2['No'].values.tolist()))
+                group_data.append((temp, str(name) + 'F_' + str(name2) + '_' + str(name3), group3['No'].values.tolist()))
                 temp += 1
-    # group_data = sorted(group_data,reverse=True)#グループを降順に並び替え
-    # temp=1#group_noを昇順に書き換え
-    # group_data_rev = []
-    # for tem in group_data:
-    #     tem = (temp, tem[1], tem[2])
-    #     group_data_rev.append(tem)
-    #     temp+= 1
-    return group_data
+    group_data = sorted(group_data,reverse=True)#グループを降順に並び替え
+    temp=1#group_noを昇順に書き換え
+    group_data_rev = []
+    for tem in group_data:
+         tem = (temp, tem[1], tem[2])
+         group_data_rev.append(tem)
+         temp+= 1
+    return group_data_rev
 
 #初期仮定断面の設定
 #Excelで入力した全柱梁部材に対して初期仮定断面を算定する
@@ -174,10 +174,10 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             beam.F = 0
             beam.r = 0
 
-    #初期梁断面のグルーピング
-    temp_list = map(lambda i: [beams[i].no, beams[i].H, beams[i].B, beams[i].story], range(len(beams)))
-    table_columns = ["No","H","B","story"]
-    group_data = make_group(temp_list,table_columns,str("story"),str("H"),str("B"))#グルーピング
+    #初期梁断面のグルーピング(初期選定断面において梁は階、方向、せいでグルーピング）
+    temp_list = map(lambda i: [beams[i].no, beams[i].H, beams[i].direction, beams[i].story], range(len(beams)))
+    table_columns = ["No","H","direction","story"]
+    group_data = make_group(temp_list,table_columns,str("story"),str("direction"),str("H"))#グルーピング
     beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
     #柱梁の剛比算定
