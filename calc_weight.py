@@ -3,7 +3,7 @@ import math
 import yaml
 
 #層重量、地震荷重の算定
-def calc_layer_weight(beams,columns,layers,maximum_height):
+def calc_layer_weight(nodes,beams,columns,layers,maximum_height):
     #df1 = pd.read_excel("input_model.xlsx", sheet_name="Story_shear", header=0)
     df1 = pd.read_csv("./make_sample_model/input_layers.csv", header=0)
 
@@ -75,14 +75,51 @@ def calc_layer_weight(beams,columns,layers,maximum_height):
         layers[i].Ci = Z * Rt * layers[i].Ai * C0
         layers[i].Qi = layers[i].Ci * layers[i].cum_weight_seismic
 
-    #各層柱の長期軸力の仮定
-    # 外部計算した各柱の負担面積の比率に基づいて、各層の層重量を分担
+    # #各層柱の長期軸力の仮定
+    # # 外部計算した各柱の負担面積の比率に基づいて、各層の層重量を分担
+    # for column in columns:
+    #     column.N_Lx = layers[len(layers)-column.story].cum_weight_floor \
+    #                   * column.load_area / layers[len(layers)-column.story].floor_area \
+    #     + layers[len(layers)-column.story].cum_weight_wall \
+    #     * column.wall_load_length / layers[len(layers)-column.story].outerwall_length
+    #     column.N_Ly = layers[len(layers)-column.story].cum_weight_floor * column.load_area \
+    #                   / layers[len(layers)-column.story].floor_area \
+    #     + layers[len(layers)-column.story].cum_weight_wall \
+    #     * column.wall_load_length / layers[len(layers)-column.story].outerwall_length
+
+    #各柱の軸力算定
     for column in columns:
-        column.N_Lx = layers[len(layers)-column.story].cum_weight_floor \
+        #外部計算した各柱の負担面積の比率に基づいて、各層の柱軸力を算定
+        column.temp_axial_column_x = layers[len(layers)-column.story].weight_floor \
                       * column.load_area / layers[len(layers)-column.story].floor_area \
-        + layers[len(layers)-column.story].cum_weight_wall \
+        + layers[len(layers)-column.story].weight_wall \
         * column.wall_load_length / layers[len(layers)-column.story].outerwall_length
-        column.N_Ly = layers[len(layers)-column.story].cum_weight_floor * column.load_area \
+        column.temp_axial_column_y = layers[len(layers)-column.story].weight_floor * column.load_area \
                       / layers[len(layers)-column.story].floor_area \
-        + layers[len(layers)-column.story].cum_weight_wall \
+        + layers[len(layers)-column.story].weight_wall \
         * column.wall_load_length / layers[len(layers)-column.story].outerwall_length
+
+        #上の層の柱の軸力から順に足す
+    for layer in layers:
+        for column in columns:
+            if column.story == layer.story:
+                if nodes[column.i-1].z > nodes[column.j-1].z:  # i端側がj端側よりも高い場合
+                    temp = nodes[column.i-1].column_no_each_node_x#i端部材no
+                    temp2 = nodes[column.i-1].column_no_each_node_y
+                else:
+                    temp = nodes[column.j-1].column_no_each_node_x
+                    temp2 = nodes[column.j-1].column_no_each_node_y#j端部材no
+
+                for j in temp:
+                    if j != column.no:#自分以外の柱がある場合その柱の軸力を足す
+                        column.N_Lx = column.temp_axial_column_x+columns[j-1].temp_axial_column_x
+                        column.temp_axial_column_x = column.N_Lx #該当する柱の仮の軸力も更新する
+                    else:
+                        column.N_Lx = column.temp_axial_column_x
+
+                for j in temp2:
+                    if j != column.no:  # 自分以外の柱がある場合その柱の軸力を足す
+                        column.N_Ly = column.temp_axial_column_y+ columns[j- 1].temp_axial_column_y
+                        column.temp_axial_column_y = column.N_Ly #該当する柱の仮の軸力も更新する
+                    else:
+                        column.N_Ly = column.temp_axial_column_y

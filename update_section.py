@@ -742,14 +742,14 @@ def member_strength_check(nodes,beams,columns,layers):
         #ratio_x = temp_column_Mp_x/temp_beam_Mp_x
         #ratio_y = temp_column_Mp_y / temp_beam_Mp_y
 
-        #柱梁耐力比が1.5以下の場合、1.5以上にするために必要な柱の全塑性モーメントを求める
+        #柱梁耐力比が1以下の場合、1以上にするために必要な柱の全塑性モーメントを求める(2/27柱梁耐力比クライテリア1以下に戻す)
         if len(node.column_no_each_node_x) > 1:#最上層、最下層以外で検討
-            node.req_Mpx = temp_beam_Mp_x / len(node.beam_no_each_node_x)*1.5
+            node.req_Mpx = temp_beam_Mp_x / len(node.beam_no_each_node_x)*1
         else:
             node.req_Mpx = 0
 
-        if len(node.column_no_each_node_y) > 1:  # 最上層、最下層以外で検討
-            node.req_Mpy = temp_beam_Mp_y / len(node.beam_no_each_node_y)*1.5
+        if len(node.column_no_each_node_y) > 1:  # 最上層、最下層以外で検討(2/27柱梁耐力比クライテリア1以下に戻す)
+            node.req_Mpy = temp_beam_Mp_y / len(node.beam_no_each_node_y)*1
         else:
             node.req_Mpy = 0
 

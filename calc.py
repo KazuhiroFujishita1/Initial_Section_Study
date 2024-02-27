@@ -22,11 +22,11 @@ def start():
 #データの読み込み
     nodes, beams, columns, layers, maximum_height = read_model()
 
-#層重量の算定
-    calc_layer_weight(beams,columns,layers,maximum_height)
+# 部材の接合状況を把握
+    detect_connection(nodes, beams, columns)
 
-#部材の接合状況を把握
-    detect_connection(nodes,beams,columns)
+#層重量の算定
+    calc_layer_weight(nodes,beams,columns,layers,maximum_height)
 
 #初期仮定断面の設定
     beam_groups,column_groups = \
