@@ -864,15 +864,28 @@ def calc_column_thickness(columns):
                 column.Zp = float(target_row['Zp'])
                 column.F = float(target_row['F'])
 
-            else:#柱リストの中に必要板厚以上のものがない場合（ビルドエッジを使うことをとりあえず想定）
-             #必要板厚に基づく板厚の更新
-                column.t  = math.ceil(column.tc)#小数第一位で切り上げ
-            #
-            # #断面諸元の再計算（更新した板厚で実施）
-                column.A = ((column.H)**2 - (column.H-column.t*2)**2)/m_to_mm**2
-                column.Ix = (((column.H)**4-(column.H-column.t*2)**4)/12.0)/m_to_mm**4
-                column.Iy = ((column.H)**4-(column.H-column.t*2)**4)/12.0/m_to_mm**4
-                column.Z = ((column.H)**4-(column.H-column.t*2)**4)/(6*column.H)/m_to_mm**3
+            else:#柱リストの中に必要板厚以上のものがない場合
+                #柱せいを今よりも1段上げたうえで同等の断面2次モーメント、断面積の諸元を満たす断面を再選定
+                re_filtered_data = column_list[(column_list['H'] > column.H)
+                                               & (column_list['A'] >= (column.H**2-(column.H-2*column.tc)**2)/10**6)
+                                               & (column_list['Ix'] >= 1/12*(column.H**4-(column.H-2*column.tc)**4)/10**12)]
+                # 得られたリストの最上段のものに更新
+                target_row = re_filtered_data.iloc[0]
+
+                column.A = float(target_row['A'])
+                column.t = float(target_row['t'])
+                column.r = float(target_row['r'])
+                column.Ix = float(target_row['Ix'])
+                column.Iy = float(target_row['Iy'])
+                column.selected_section_no = float(target_row['No'])
+                # 部材自重の算定
+                column.unit_weight = float(target_row["unit_m"] * 9.80665 /m_to_mm)
+                column.weight = column.unit_weight * column.length  # 部材自重
+                # 算定柱せいによる等価な基礎梁剛度の取得
+                column.base_K = float(target_row['base_K'])
+                column.H = float(target_row['H'])
+                column.Zp = float(target_row['Zp'])
+                column.F = float(target_row['F'])
 
         #柱の剛度の算定(単位cm3）
             column.KX = column.Ix/column.length*1000000.0
