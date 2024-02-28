@@ -60,6 +60,8 @@ def start():
                                           beam_select_mode)
 # 下階柱のサイズを直上階柱のサイズに比較して上げる
     check_column_size(nodes,columns,layers)
+    #更新後断面における剛比算定
+    calc_stiffness_ratio(columns,beams,nodes)
 
 #グルーピング出力
     grouping_output(beams,columns,column_groups,beam_groups)
