@@ -1,6 +1,6 @@
 CalcCondition: cost
 StructuralType: Steel
-Manual_T: 0
+Manual_T: 
 Baseshear: 0.2
 Tc: 0.4
 Z: 1

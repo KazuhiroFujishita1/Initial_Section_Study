@@ -13,7 +13,6 @@ def calc_layer_weight(nodes,beams,columns,layers,maximum_height):
     with open(file_path, 'r') as file:
         data = yaml.safe_load(file)
 
-    manual_T=0
     if data:
         St_type = data.get('StructuralType')
         manual_T = data.get('Manual_T')
@@ -51,14 +50,16 @@ def calc_layer_weight(nodes,beams,columns,layers,maximum_height):
         layers[i].cum_weight_wall = temp2
         layers[i].cum_weight_seismic = temp_seismic
 
-    #1次固有周期の算定
-    if St_type == 'Steel':
-        T = 0.03*maximum_height
-    elif St_type == 'RC':
-        T = 0.02*maximum_height
+    if manual_T is None:#manual_Tが未記入の場合略算周期を用いる
+        # 1次固有周期の算定
+        if St_type == 'Steel':
+            T = 0.03 * maximum_height
+        elif St_type == 'RC':
+            T = 0.02 * maximum_height
+    else:
+        T=manual_T
+    print(T)
 
-    if manual_T != 0:
-        T = manual_T
 
     #振動特性係数Rtの算定
     if T < Tc:
