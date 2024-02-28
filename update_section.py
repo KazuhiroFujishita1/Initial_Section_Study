@@ -227,7 +227,7 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
     #                     temp += 1
 
 #大梁断面を長期・短期応力評価結果に基づいて更新
-def update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_groups):
+def update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_groups,flag):
 
     #単位変換用係数
     m_to_mm = 1000.0#m→mmへ
@@ -379,11 +379,12 @@ def update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_group
                 beams[no-1].r = float(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['r'])
 
         #応力に基づく大梁の選定断面のメモリー
-                beams[no-1].B_phase1 = beams[no-1].B
-                beams[no-1].H_phase1 = beams[no-1].H
-                beams[no-1].t1_phase1 = beams[no-1].t1
-                beams[no-1].t2_phase1 = beams[no-1].t2
-                beams[no-1].r_phase1 = beams[no-1].r
+                if flag == 0:#flagが0の場合途中経過の断面を記録
+                    beams[no-1].B_phase1 = beams[no-1].B
+                    beams[no-1].H_phase1 = beams[no-1].H
+                    beams[no-1].t1_phase1 = beams[no-1].t1
+                    beams[no-1].t2_phase1 = beams[no-1].t2
+                    beams[no-1].r_phase1 = beams[no-1].r
 
         #変形による選定断面によるグループの梁諸元更新
                 beams[no-1].selected_section_no = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['No'])
@@ -398,11 +399,12 @@ def update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_group
                 beams[no-1].r = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['r'])     
 
         #変形に基づく大梁の選定断面のメモリー
-                beams[no-1].B_phase2 = beams[no-1].B
-                beams[no-1].H_phase2 = beams[no-1].H
-                beams[no-1].t1_phase2 = beams[no-1].t1
-                beams[no-1].t2_phase2 = beams[no-1].t2
-                beams[no-1].r_phase2 = beams[no-1].r
+                if flag == 0:#flagが0の場合途中経過の断面を記録
+                    beams[no-1].B_phase2 = beams[no-1].B
+                    beams[no-1].H_phase2 = beams[no-1].H
+                    beams[no-1].t1_phase2 = beams[no-1].t1
+                    beams[no-1].t2_phase2 = beams[no-1].t2
+                    beams[no-1].r_phase2 = beams[no-1].r
 
     # #応力による断面選定（各梁独立とみなした検討）
     # #梁応力の算定
@@ -529,25 +531,26 @@ def update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_group
     group_data = make_group(temp_list,table_columns,str("story"),str("H"),str("B"))#グルーピング
     beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
-    #梁せいの調整アルゴリズムの実行
-    while True:
-    #隣接グループの梁せいチェック
-        beam_height_condition, check1 = check_beam_height(nodes,beam_groups,beams)
-    #以下チェック結果がNGの場合、OKになるまで実施
-        print(beam_height_condition)
-    #ダイヤフラムの形状制約に基づく梁せいの調整
-        if check1 is False:
-            revise_beam_height(nodes,beam_groups,beams,selected_beam_list)
-        else:#OKの場合アルゴリズムのループを抜ける
-            break
+    # #梁せいの調整アルゴリズムの実行
+    # while True:
+    # #隣接グループの梁せいチェック
+    #     beam_height_condition, check1 = check_beam_height(nodes,beam_groups,beams)
+    # #以下チェック結果がNGの場合、OKになるまで実施
+    #     print(beam_height_condition)
+    # #ダイヤフラムの形状制約に基づく梁せいの調整
+    #     if check1 is False:
+    #         revise_beam_height(nodes,beam_groups,beams,selected_beam_list)
+    #     else:#OKの場合アルゴリズムのループを抜ける
+    #         break
 
     # ダイヤフラム調整後の大梁の選定断面のメモリー
-    for beam in beams:
-        beam.B_phase3 = beam.B
-        beam.H_phase3 = beam.H
-        beam.t1_phase3 = beam.t1
-        beam.t2_phase3 = beam.t2
-        beam.r_phase3 = beam.r
+    if flag == 0:  # flagが0の場合途中経過の断面を記録
+        for beam in beams:
+            beam.B_phase3 = beam.B
+            beam.H_phase3 = beam.H
+            beam.t1_phase3 = beam.t1
+            beam.t2_phase3 = beam.t2
+            beam.r_phase3 = beam.r
 
     #梁断面の更新に伴う剛度の更新
     for beam in beams:
@@ -900,166 +903,6 @@ def update_column_section(nodes,beams,columns,layers,EE,column_groups,beam_group
     calc_column_thickness(columns)
     #更新後断面における剛比算定
     calc_stress.calc_stiffness_ratio(columns,beams,nodes)
-
-    #断面最終選定段階でもう一度応力算定を実行
-    #単位変換用係数
-    m_to_mm = 1000.0#m→mmへ
-    kN_to_N = 1000.0#kN→Nへ
-    #準備計算
-    #梁リストの読み込み
-    beam_list = pd.read_csv("beam_list.csv", header=0)
-    #選定モードに準じた梁リストのみ読み込む
-    selected_beam_list = beam_list[beam_list['category'].str.contains(beam_select_mode,case=False, na=False)]
-
-    # 固定モーメント法
-    calc_stress.fixed_moment_method(nodes, beams, columns, EE)
-    # D値法
-    calc_stress.D_method(nodes, layers, beams, columns, EE)
-    # 柱梁の長期・短期荷重まとめ
-    calc_stress.load_calc(beams, columns)
-    #応力による断面選定
-    #梁応力の算定
-    for beam_group in beam_groups:
-        max_list_no_stress = 0 #各グループで応力制約を満たす最大の梁no
-        max_list_no_disp = 0 #各グループで変形制約を満たす最大の梁no
-        #梁グループごとに応力、変形をチェック
-        for no in beam_group.ID:
-            if beams[no-1].category != "BB":#基礎梁以外の断面を更新
-                beams[no-1].sigma_b_L = (beams[no-1].ML*kN_to_N*m_to_mm)/(beams[no-1].Z*m_to_mm**3-beams[no-1].t1*(beams[no-1].H-beams[no-1].t2*2)**2/6.0)#曲げ応力の算定時にウェブの断面係数は非考慮
-                beams[no-1].sigma_b_s = (beams[no-1].Ms*kN_to_N*m_to_mm)/(beams[no-1].Z*m_to_mm**3-beams[no-1].t1*(beams[no-1].H-beams[no-1].t2*2)**2/6.0)#曲げ応力の算定時にウェブの断面係数は非考慮
-                beams[no-1].tau_L = beams[no-1].QL*kN_to_N/((beams[no-1].H-beams[no-1].t2*2-beams[no-1].r*2)*beams[no-1].t1)
-                beams[no-1].tau_s = beams[no-1].Qs*kN_to_N/((beams[no-1].H-beams[no-1].t2*2-beams[no-1].r*2)*beams[no-1].t1)
-    #曲げ、せん断耐力の算定
-                f_b = beams[no-1].F#取り合えずfb低減は考慮しない
-                f_s = beams[no-1].F/math.sqrt(3)
-
-    #検定比0.9を満たすために必要な梁の断面係数、ウェブ断面積の算定
-                beams[no-1].required_web_area = max(beams[no-1].QL*kN_to_N/(0.9*f_s/1.5),beams[no-1].Qs*kN_to_N/(0.9*f_s))
-                beams[no-1].required_Z = max(beams[no-1].ML*kN_to_N*m_to_mm/(0.9*f_b/1.5),beams[no-1].Ms*kN_to_N*m_to_mm/(0.9*f_b))
-
-    #必要な梁の断面係数、ウェブ断面積以上の部材をリストより選定
-                filtered_list = selected_beam_list[((selected_beam_list['Z']*m_to_mm**3-selected_beam_list['t1']*(selected_beam_list['H']-selected_beam_list['t2']*2)**2/6) \
-                                                * selected_beam_list['F']/beams[no-1].F > beams[no-1].required_Z) &
-            ((selected_beam_list['H']-selected_beam_list['t2']*2-selected_beam_list['r']*2)*selected_beam_list['t1'] * selected_beam_list['F']/beams[no-1].F \
-              > beams[no-1].required_web_area)]
-
-    #さらに梁せいの制限で絞り込み（スパンの1/20以上の条件は削除）
-                filtered_list2 = filtered_list#filtered_list[(filtered_list['H']/(m_to_mm) > beam.length*1.0/20.0)]
-
-                beams[no-1].selected_section_no = float(list(filtered_list2['No'])[0])
-                beams[no-1].I = float(list(filtered_list2['Ix'])[0])  # 断面諸元の更新
-                beams[no-1].H = float(list(filtered_list2['H'])[0])
-                beams[no-1].B = float(list(filtered_list2['B'])[0])
-                beams[no-1].t1 = float(list(filtered_list2['t1'])[0])
-                beams[no-1].t2 = float(list(filtered_list2['t2'])[0])
-                beams[no-1].Z = float(list(filtered_list2['Z'])[0])
-                beams[no-1].Zp = float(list(filtered_list2['Zp'])[0])
-                beams[no-1].F = float(list(filtered_list2['F'])[0])
-                beams[no-1].r = float(list(filtered_list2['r'])[0])
-                if beams[no-1].H <= 600:
-                    beams[no-1].calc_phai = beams[no-1].pai2
-                else:
-                    beams[no-1].calc_phai = beams[no-1].pai
-
-                #応力による必要梁noの更新
-                if beams[no-1].selected_section_no > max_list_no_stress:
-                    max_list_no_stress = beams[no-1].selected_section_no
-
-            # 大梁のたわみ算定に基づく断面更新(ダミーの基礎梁は除く）
-                temp_no=beams[no-1].selected_section_no
-                while True:
-                    if beams[no-1].direction == "X":
-                        temp_M_Lx0 = beams[no-1].M0 - np.average([abs(beams[no-1].M_Lx[0]), abs(beams[no-1].M_Lx[1])])
-                        temp_delta_x = (5 * beams[no-1].M0 / (48.0 * EE * beams[no-1].I * beams[no-1].calc_phai) * beams[no-1].length ** 2
-                                - (abs(beams[no-1].M_Lx[0])+abs(beams[no-1].M_Lx[1])) / (16.0 * EE * beams[no-1].I * beams[no-1].calc_phai) * beams[no-1].length ** 2)  # 梁中央のたわみ（未検証）
-
-                # 大梁たわみが1/300以上または20mm以上の場合大梁断面を更新
-                        if abs(temp_delta_x / beams[no-1].length) >= 1.0 / 300.0: #or temp_delta_x > 0.02: (2/7 revised)
-                    #NGの場合梁リストから一段上げて再確認
-                            temp_no += 1
-                            beams[no-1].I = float(list(filtered_list2['Ix'])[temp_no])  # 断面諸元の更新
-                            beams[no-1].H = float(list(filtered_list2['H'])[temp_no])
-                            beams[no-1].B = float(list(filtered_list2['B'])[temp_no])
-                            beams[no-1].t1 = float(list(filtered_list2['t1'])[temp_no])
-                            beams[no-1].t2 = float(list(filtered_list2['t2'])[temp_no])
-                            beams[no-1].Z = float(list(filtered_list2['Z'])[temp_no])
-                            beams[no-1].Zp = float(list(filtered_list2['Zp'])[temp_no])
-                            beams[no-1].F = float(list(filtered_list2['F'])[temp_no])
-                            beams[no-1].r = float(list(filtered_list2['r'])[temp_no])
-
-                            if beam.H <= 600:
-                                beams[no-1].calc_phai = beams[no-1].pai2
-                            else:
-                                beams[no-1].calc_phai = beams[no-1].pai
-
-                            print("Beam deflection is NG")
-                        else:
-                            print("Beam deflection is OK")
-                            break
-                    else:
-                        temp_M_Ly0 =beams[no-1].M0 - np.average([abs(beams[no-1].M_Ly[0]), abs(beams[no-1].M_Ly[1])])
-                        temp_delta_y = (5 * beams[no-1].M0 / (48.0 * EE * beams[no-1].I * beams[no-1].calc_phai) * beams[no-1].length ** 2
-                                - (abs(beams[no-1].M_Ly[0])+abs(beams[no-1].M_Ly[1])) / (16.0 * EE * beams[no-1].I * beams[no-1].calc_phai) * beams[no-1].length ** 2)  # 梁中央のたわみ（未検証）
-                # 大梁たわみが1/300以下であるか確認
-                        if abs(temp_delta_y / beams[no-1].length) >= 1.0 / 300.0: #or temp_delta_y >= 0.02: (2/7 revised)
-                    # NGの場合梁リストから一段上げて再確認
-                            temp_no += 1
-                            beams[no-1].I = float(list(filtered_list2['Ix'])[temp_no])  # 断面諸元の更新
-                            beams[no-1].H = float(list(filtered_list2['H'])[temp_no])
-                            beams[no-1].B = float(list(filtered_list2['B'])[temp_no])
-                            beams[no-1].t1 = float(list(filtered_list2['t1'])[temp_no])
-                            beams[no-1].t2 = float(list(filtered_list2['t2'])[temp_no])
-                            beams[no-1].Z = float(list(filtered_list2['Z'])[temp_no])
-                            beams[no-1].Zp = float(list(filtered_list2['Zp'])[temp_no])
-                            beams[no-1].F = float(list(filtered_list2['F'])[temp_no])
-                            beams[no-1].r = float(list(filtered_list2['r'])[temp_no])
-
-                            if beams[no-1].H <= 600:
-                                beams[no-1].calc_phai = beams[no-1].pai2
-                            else:
-                                beams[no-1].calc_phai = beams[no-1].pai
-
-                            print("Beam deflection is NG")
-                        else:
-                            print("Beam deflection is OK")
-                            break
-
-                #応力による必要梁noの更新
-                if temp_no > max_list_no_disp:
-                    max_list_no_disp = temp_no
-            #更新後断面のdeltaを格納
-                if beams[no-1].direction == "X":
-                    beams[no-1].rev_delta_x = temp_delta_x
-                elif beams[no-1].direction == "Y":
-                    beams[no-1].rev_delta_y = temp_delta_y
-        #応力による選定断面によるグループの梁諸元更新
-        print(max_list_no_stress)
-        #print(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['No'])
-        for no in beam_group.ID:
-            if beams[no-1].category != "BB":#基礎梁以外の断面を更新
-                beams[no-1].selected_section_no = float(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['No'])
-                beams[no-1].I = float(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['Ix']) # 断面諸元の更新
-                beams[no-1].H = float(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['H'])
-                beams[no-1].B = float(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['B'])
-                beams[no-1].t1 = float(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['t1'])
-                beams[no-1].t2 = float(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['t2'])
-                beams[no-1].Z = float(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['Z'])
-                beams[no-1].Zp = float(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['Zp'])
-                beams[no-1].F = float(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['F'])
-                beams[no-1].r = float(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['r'])
-
-        #変形による選定断面によるグループの梁諸元更新
-                beams[no-1].selected_section_no = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['No'])
-                beams[no-1].I = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['Ix']) # 断面諸元の更新
-                beams[no-1].H = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['H'])
-                beams[no-1].B = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['B'])
-                beams[no-1].t1 = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['t1'])
-                beams[no-1].t2 = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['t2'])
-                beams[no-1].Z = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['Z'])
-                beams[no-1].Zp = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['Zp'])
-                beams[no-1].F = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['F'])
-                beams[no-1].r = float(selected_beam_list[selected_beam_list['No']==max_list_no_disp]['r'])
-
 
     # 柱断面のグルーピング
     temp_list = map(lambda i: [columns[i].no, columns[i].H, columns[i].t, columns[i].story], range(len(columns)))

@@ -6,6 +6,7 @@ from calc_weight import *
 from update_section import *
 from output_section_data import *
 from output_RESP_D_script import *
+from check_column_size import *
 import yaml
 
 def start():
@@ -41,11 +42,24 @@ def start():
 #柱梁の長期・短期荷重まとめ
     load_calc(beams,columns)
 
+    flag = 0 #flagが0の場合途中経過の断面を記録
 #大梁断面の更新
-    beam_groups = update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_groups)
-
+    beam_groups = update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_groups,flag)
 #柱断面の更新
-    column_groups = update_column_section(nodes, beams, columns, layers, EE)
+    column_groups = update_column_section(nodes, beams, columns, layers, EE,column_groups,beam_groups,beam_select_mode)
+
+# 固定モーメント法(2回目)
+    fixed_moment_method(nodes, beams, columns, EE)
+# D値法(2回目)
+    D_method(nodes, layers, beams, columns, EE)
+    flag = 1 #flagが1の場合途中経過の断面を記録しない
+# 大梁断面の更新
+    beam_groups = update_beam_section(nodes, beams, beam_select_mode, EE, column_groups, beam_groups,flag)
+# 柱断面の更新
+    column_groups = update_column_section(nodes, beams, columns, layers, EE, column_groups, beam_groups,
+                                          beam_select_mode)
+# 下階柱のサイズを直上階柱のサイズに比較して上げる
+    check_column_size(nodes,columns,layers)
 
 #グルーピング出力
     grouping_output(beams,columns,column_groups,beam_groups)
