@@ -653,21 +653,19 @@ def member_strength_check(nodes,beams,columns,layers):
         #柱の上側に取りつく梁の両端ヒンジ時のせん断力の差分がはりの剪断力による軸力となる
         if len(temp) == 1:
             Mp_beam = beams[temp[0]-1].Zp*10**9*beams[temp[0]-1].F/(10**6)
-            column.temp_axial_column_x_Mp = Mp_beam*2/beams[temp[0]-1].length/2
+            column.temp_axial_column_x_Mp = Mp_beam*2/beams[temp[0]-1].length
         elif len(temp) == 2:
             Mp_beam1 = beams[temp[0]-1].Zp*10**9*beams[temp[0]-1].F/(10**6)
             Mp_beam2 = beams[temp[1]-1].Zp*10**9*beams[temp[1]-1].F/(10**6)
-            column.temp_axial_column_x_Mp = abs(Mp_beam1*2/beams[temp[0]-1].length/2
-                                                -Mp_beam2*2/beams[temp[1]-1].length/2)
+            column.temp_axial_column_x_Mp = Mp_beam1*2/beams[temp[0]-1].length-Mp_beam2*2/beams[temp[1]-1].length
 
         if len(temp2) == 1:
             Mp_beam = beams[temp2[0]-1].Zp*10**9*beams[temp2[0]-1].F/(10**6)
-            column.temp_axial_column_y_Mp = Mp_beam*2/beams[temp2[0]-1].length/2
+            column.temp_axial_column_y_Mp = Mp_beam*2/beams[temp2[0]-1].length
         elif len(temp2) == 2:
             Mp_beam1 = beams[temp2[0]-1].Zp*10**9*beams[temp2[0]-1].F/(10**6)
             Mp_beam2 = beams[temp2[1]-1].Zp*10**9*beams[temp2[1]-1].F/(10**6)
-            column.temp_axial_column_y_Mp = abs(Mp_beam1*2/beams[temp2[0]-1].length/2
-                                                -Mp_beam2*2/beams[temp2[1]-1].length/2)
+            column.temp_axial_column_y_Mp = Mp_beam1*2/beams[temp2[0]-1].length-Mp_beam2*2/beams[temp2[1]-1].length
 
         #上の層の柱の軸力から順に足す
     D_sum_x =np.zeros(len(layers))
@@ -828,7 +826,7 @@ def calc_limit_column_size(nodes,layers,columns,beams,EE):
         column.KY = column.Iy/column.length*1000000.0
 
 #応力に基づく柱断面の必要板厚の算定
-def calc_column_thickness(columns):
+def calc_column_thickness(columns,flag):
 
     #単位変換用係数
     m_to_mm = 1000.0#m→mmへ
@@ -891,16 +889,23 @@ def calc_column_thickness(columns):
                 column.Zp = float(target_row['Zp'])
                 column.F = float(target_row['F'])
 
+
         #柱の剛度の算定(単位cm3）
             column.KX = column.Ix/column.length*1000000.0
             column.KY = column.Iy/column.length*1000000.0
 
+        #1回目の応力計算に基づく柱断面のメモリー
+        if flag == 0:
+            column.H_phase1 = column.H
+            column.t_phase1 = column.t
+            column.r_phase1 = column.r
+
 #柱断面を長期・短期応力評価結果に基づいて更新
-def update_column_section(nodes,beams,columns,layers,EE,column_groups,beam_groups,beam_select_mode):
+def update_column_section(nodes,beams,columns,layers,EE,column_groups,beam_groups,beam_select_mode,flag):
     #剛性チェック、柱梁耐力比に基づく必要最低柱断面の算定
     calc_limit_column_size(nodes,layers,columns,beams,EE)
     #応力に基づく柱断面の必要板厚の算定
-    calc_column_thickness(columns)
+    calc_column_thickness(columns,flag)
     #更新後断面における剛比算定
     calc_stress.calc_stiffness_ratio(columns,beams,nodes)
 

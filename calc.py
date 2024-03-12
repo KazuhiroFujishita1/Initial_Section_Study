@@ -46,22 +46,30 @@ def start():
 #大梁断面の更新
     beam_groups = update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_groups,flag)
 #柱断面の更新
-    column_groups = update_column_section(nodes, beams, columns, layers, EE,column_groups,beam_groups,beam_select_mode)
+    column_groups = update_column_section(nodes, beams, columns, layers, EE,column_groups,beam_groups,beam_select_mode,flag)
+
+    # 下階柱のサイズを直上階柱のサイズに比較して上げる（こちらを先にする）
+    check_column_size(nodes, columns, layers)
+    # 更新後断面における剛比算定
+    calc_stiffness_ratio(columns, beams, nodes)
 
 # 固定モーメント法(2回目)
     fixed_moment_method(nodes, beams, columns, EE)
 # D値法(2回目)
     D_method(nodes, layers, beams, columns, EE)
+# 柱梁の長期・短期荷重まとめ
+    load_calc(beams, columns)
     flag = 1 #flagが1の場合途中経過の断面を記録しない
 # 大梁断面の更新
     beam_groups = update_beam_section(nodes, beams, beam_select_mode, EE, column_groups, beam_groups,flag)
 # 柱断面の更新
     column_groups = update_column_section(nodes, beams, columns, layers, EE, column_groups, beam_groups,
-                                          beam_select_mode)
-# 下階柱のサイズを直上階柱のサイズに比較して上げる
-    check_column_size(nodes,columns,layers)
-    #更新後断面における剛比算定
-    calc_stiffness_ratio(columns,beams,nodes)
+                                          beam_select_mode,flag)
+
+    # 下階柱のサイズを直上階柱のサイズに比較して上げる（こちらを先にする）
+    check_column_size(nodes, columns, layers)
+    # 更新後断面における剛比算定
+    calc_stiffness_ratio(columns, beams, nodes)
 
 #グルーピング出力
     grouping_output(beams,columns,column_groups,beam_groups)
@@ -74,5 +82,8 @@ def start():
 
 #RESP-Dscriptの出力
     output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_groups,beam_groups)
+
+    for group in beam_groups:
+        print(group.group_name,group.ID)
 
     return nodes, beams, columns, layers, maximum_height

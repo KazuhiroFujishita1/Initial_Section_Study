@@ -171,10 +171,10 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
     dict["Load"]={}
     dict["Load"]["OuterwallLoadListPath"] = "./outer-wall-load.csv"
     dict["Load"]["OuterWalls"] = [
-        {"Floor": ["1F", "3F"], "Frame": ["Y1", "Y1"], "Axis": ["X1", "X2"], "Type": "ALC100"},
-        {"Floor": ["1F", "3F"], "Frame": ["Y5", "Y5"], "Axis": ["X1", "X2"], "Type": "ALC100"},
-        {"Floor": ["1F", "3F"], "Frame": ["X1", "X1"], "Axis": ["Y1", "Y5"], "Type": "ALC100"},
-        {"Floor": ["1F", "3F"], "Frame": ["X2", "X2"], "Axis": ["Y1", "Y5"], "Type": "ALC100"}
+        {"Floor": ["1F", "RF"], "Frame": ["Y1", "Y1"], "Axis": ["X1", "X2"], "Type": "ALC100"},
+        {"Floor": ["1F", "RF"], "Frame": ["Y5", "Y5"], "Axis": ["X1", "X2"], "Type": "ALC100"},
+        {"Floor": ["1F", "RF"], "Frame": ["X1", "X1"], "Axis": ["Y1", "Y5"], "Type": "ALC100"},
+        {"Floor": ["1F", "RF"], "Frame": ["X2", "X2"], "Axis": ["Y1", "Y5"], "Type": "ALC100"}
     ]#自動で読み込む方法はとりあえず置いとく
     #スラブ荷重
     slab_load_info = []
