@@ -1,10 +1,16 @@
 import csv
 import json
+import yaml
 
 def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_groups,beam_groups):
+    #設定yamlファイルの読み込み
+    with open("generate_JSON_condition.yaml", 'r') as yml_file:
+        input_data = yaml.safe_load(yml_file)
+    print(input_data)
     # csvファイル名
-    output_file_column_csv = 'initial-column'
-    output_file_girder_csv = 'initial-girder'
+    output_file_column_csv = input_data['Output_file_column_name']
+    output_file_girder_csv = input_data['Output_file_girder_name']
+
     # csvファイルにデータを書き込む
 
     #柱グループ諸元の出力
@@ -29,6 +35,9 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
                              columns[column_group.ID[0]-1].t,columns[column_group.ID[0]-1].r,temp_text])
 
     #梁グループ諸元の出力
+    #対象架構の最上層の検出
+    max_story_name = str(len(layers)+1) +"F"
+
     with open(output_file_girder_csv + '.csv', mode='w', newline='', encoding='utf-8') as file:
         writer = csv.writer(file, quoting=csv.QUOTE_NONE, escapechar='\\')
         writer.writerow(['//Floor', 'Mark', 'Shape', 'H', 'B', 'tw', 'tf', 'r', 'MAT'])
@@ -39,7 +48,13 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
                 temp_text = "SM490"#F値が325ならSM490
             else:
                 temp_text = "Error"
-            writer.writerow([str(beams[beam_group.ID[0]-1].story)+str("F"),beam_group.group_name,"H",
+
+            if str(beams[beam_group.ID[0]-1].story)+str("F") != max_story_name:
+                writer.writerow([str(beams[beam_group.ID[0]-1].story)+str("F"),beam_group.group_name,"H",
+                                 beams[beam_group.ID[0]-1].H,beams[beam_group.ID[0]-1].B,beams[beam_group.ID[0]-1].t1,
+                             beams[beam_group.ID[0]-1].t2,beams[beam_group.ID[0]-1].r,temp_text])
+            elif str(beams[beam_group.ID[0]-1].story)+str("F") == max_story_name:#最上層はRFとする
+                writer.writerow(["RF",beam_group.group_name,"H",
                                  beams[beam_group.ID[0]-1].H,beams[beam_group.ID[0]-1].B,beams[beam_group.ID[0]-1].t1,
                              beams[beam_group.ID[0]-1].t2,beams[beam_group.ID[0]-1].r,temp_text])
 
@@ -50,9 +65,9 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
     X_axis=[];Y_axis=[];Z_axis=[]
     X_axis_name=[];Y_axis_name=[];Z_axis_name=[]
     for node in nodes:
-        X_axis.append(node.x)
-        Y_axis.append(node.y)
-        Z_axis.append(node.z)
+        X_axis.append(round(node.x,3))
+        Y_axis.append(round(node.y,3))
+        Z_axis.append(round(node.z,3))
     X_axis = set(X_axis)
     Y_axis = set(Y_axis)
     Z_axis = set(Z_axis)
@@ -85,7 +100,10 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
     if len(Z_axis) > 2:
         for no in range(len(Z_axis)-1):
             Z_axis_diff.append(Z_axis[no] - Z_axis[no+1])
-            Z_axis_name.append(str(len(Z_axis)-no)+"F")
+            if str(len(Z_axis)-no)+"F" != max_story_name:
+                Z_axis_name.append(str(len(Z_axis)-no)+"F")
+            elif str(len(Z_axis)-no)+"F" == max_story_name:
+                Z_axis_name.append("RF")
         Z_axis_diff.append(0)
         Z_axis_name.append("1F")
     elif len(Z_axis) <= 2:
@@ -101,21 +119,21 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
     X_frame = [];Y_frame = [];Z_frame = []
     for axis_x_no in range(len(X_axis_name)):
         x_axis_info = {}
-        x_axis_info["Name"] = X_axis_name[axis_x_no]
-        x_axis_info["RelativePosition"] = X_axis_diff[axis_x_no]
+        x_axis_info["Name"] = X_axis_name[len(X_axis_name)-axis_x_no-1]
+        x_axis_info["RelativePosition"] = round(X_axis_diff[len(X_axis_name)-axis_x_no-1],3)
         X_frame.append(x_axis_info)
     for axis_y_no in range(len(Y_axis_name)):
         y_axis_info = {}
-        y_axis_info["Name"] = Y_axis_name[axis_y_no]
-        y_axis_info["RelativePosition"] = Y_axis_diff[axis_y_no]
+        y_axis_info["Name"] = Y_axis_name[len(Y_axis_name)-axis_y_no-1]
+        y_axis_info["RelativePosition"] = round(Y_axis_diff[len(Y_axis_name)-axis_y_no-1],3)
         Y_frame.append(y_axis_info)
     for axis_z_no in range(len(Z_axis_name)):
         z_axis_info = {}
-        z_axis_info["Name"] = Z_axis_name[axis_z_no]
-        z_axis_info["RelativePosition"] = Z_axis_diff[axis_z_no]
+        z_axis_info["Name"] = Z_axis_name[len(Z_axis_name)-axis_z_no-1]
+        z_axis_info["RelativeHeight"] = round(Z_axis_diff[len(Z_axis_name)-axis_z_no-1],3)
         Z_frame.append(z_axis_info)
-    dict["Model"]["Xframes"] = X_frame
-    dict["Model"]["Yframes"] = Y_frame
+    dict["Model"]["Yframes"] = X_frame
+    dict["Model"]["Xframes"] = Y_frame
     dict["Model"]["Stories"] = Z_frame
 
     X_frame_dict = {};Y_frame_dict = {};Z_frame_dict = {}
@@ -169,43 +187,17 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
 
     #荷重情報の入力
     dict["Load"]={}
-    dict["Load"]["OuterwallLoadListPath"] = "./outer-wall-load.csv"
-    dict["Load"]["OuterWalls"] = [
-        {"Floor": ["1F", "RF"], "Frame": ["Y1", "Y1"], "Axis": ["X1", "X2"], "Type": "ALC100"},
-        {"Floor": ["1F", "RF"], "Frame": ["Y5", "Y5"], "Axis": ["X1", "X2"], "Type": "ALC100"},
-        {"Floor": ["1F", "RF"], "Frame": ["X1", "X1"], "Axis": ["Y1", "Y5"], "Type": "ALC100"},
-        {"Floor": ["1F", "RF"], "Frame": ["X2", "X2"], "Axis": ["Y1", "Y5"], "Type": "ALC100"}
-    ]#自動で読み込む方法はとりあえず置いとく
+    dict["Load"]["OuterwallLoadListPath"] = input_data['Load']['OuterwallLoadListPath']
+    dict["Load"]["OuterWalls"] = input_data['Load']['OuterWalls']
     #スラブ荷重
-    slab_load_info = []
-    for layer in layers:
-        temp = {}
-        temp["Floor"] = [str(layer.story)+"F"]
-        temp["Xaxis"] = []
-        temp["Yaxis"] = []
-        temp["Type"] = str("office")
-        temp["Void"] = bool(False)
-        slab_load_info.append(temp)
-
-    dict["Load"]["SlabLoadListPath"] = "./slab-load.csv"
-    dict["Load"]["SlabLoads"] = slab_load_info
+    dict["Load"]["SlabLoadListPath"] = input_data['Load']['SlabLoadListPath']
+    dict["Load"]["SlabLoads"] = input_data['Load']['SlabLoads']
 
     #断面選定方針
     dict["SelectionStrategy"] = {}
-    dict["SelectionStrategy"]["Margin"] = 1.1
-    dict["SelectionStrategy"]["BaseplateListPath"] = "baseplate.csv"
-    dict["SelectionStrategy"]["Sections"] = [
-        {
-            "Type":"SteelGirder",
-            "InitialSectionListPath":"./initial-section-girder.csv",
-            "SearchingSectionListPath": "cost-ranking-girder.csv",
-        },
-        {
-            "Type": "SteelColumn",
-            "InitialSectionListPath": "./initial-section-column.csv",
-            "SearchingSectionListPath": "cost-ranking-column.csv",
-        }
-    ]
+    dict["SelectionStrategy"]["Margin"] = input_data['Margin']
+    dict["SelectionStrategy"]["BaseplateListPath"] = input_data['BaseplateListPath']
+    dict["SelectionStrategy"]["Sections"] = input_data['SelectionStrategy']["Sections"]
 
     with open('generator_case1.json', 'w') as f:
         json.dump(dict,f, indent=2)
