@@ -180,6 +180,8 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
         temp["Mark"] = beam.group_name
         beam_info.append(temp)
 
+    dict["Model"]["MemberArrangement"]["Girders"] = beam_info
+
     #モデル各種構造諸元の代入
     dict["Model"]["StructureType"] = "S"
     dict["Model"]["SteelStructureCondition"] = {"ColumnBaseType":"Fix"}
