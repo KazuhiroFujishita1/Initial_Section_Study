@@ -1,62 +1,228 @@
 import csv
 import json
 import yaml
+import pandas as pd
 
 def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_groups,beam_groups):
     #設定yamlファイルの読み込み
     with open("generate_JSON_condition.yaml", 'r') as yml_file:
         input_data = yaml.safe_load(yml_file)
-    print(input_data)
+
     # csvファイル名
     output_file_column_csv = input_data['Output_file_column_name']
     output_file_girder_csv = input_data['Output_file_girder_name']
 
-    # csvファイルにデータを書き込む
+    # # csvファイルにデータを書き込む
+    # #柱グループ諸元の出力
+    # with open(output_file_column_csv + '.csv', mode='w', newline='', encoding='utf-8') as file:
+    #     writer = csv.writer(file, quoting=csv.QUOTE_NONE, escapechar='\\')
+    #     writer.writerow(['//Floor', 'Mark', 'Shape', 'H', 'B', 'tw', 'tf', 'r', 'MAT'])
+    #     for column_group in column_groups:
+    #         if columns[column_group.ID[0] - 1].F == 295:
+    #             if columns[column_group.ID[0] - 1].H <= 550:#柱せい550mm以下はBCR
+    #                 temp_text = "BCR295"#F値が235ならSS400
+    #             elif columns[column_group.ID[0] - 1].H > 550:#柱せい550mmを超える場合BCP
+    #                 temp_text = "BCP295"
+    #             else:
+    #                 temp_text = "Error"
+    #         elif columns[column_group.ID[0]-1].F == 325:
+    #             temp_text = "BCP325"#F値が325ならBCP325
+    #         else:
+    #             temp_text = "Error"
+    #
+    #         writer.writerow([str(columns[column_group.ID[0]-1].story)+str("F"),column_group.group_name,"Box",
+    #                              columns[column_group.ID[0]-1].H,columns[column_group.ID[0]-1].t,
+    #                          columns[column_group.ID[0]-1].t,columns[column_group.ID[0]-1].r,temp_text])
+    #
+    # #梁グループ諸元の出力
+    # #対象架構の最上層の検出
+    # max_story_name = str(len(layers)+1) +"F"
+    #
+    # with open(output_file_girder_csv + '.csv', mode='w', newline='', encoding='utf-8') as file:
+    #     writer = csv.writer(file, quoting=csv.QUOTE_NONE, escapechar='\\')
+    #     writer.writerow(['//Floor', 'Mark', 'Shape', 'H', 'B', 'tw', 'tf', 'r', 'MAT'])
+    #     for beam_group in beam_groups:
+    #         if beams[beam_group.ID[0] - 1].F == 235:
+    #             temp_text = "SS400"#F値が235ならSS400
+    #         elif beams[beam_group.ID[0]-1].F == 325:
+    #             temp_text = "SM490"#F値が325ならSM490
+    #         else:
+    #             temp_text = "Error"
+    #
+    #         if str(beams[beam_group.ID[0]-1].story)+str("F") != max_story_name:
+    #             writer.writerow([str(beams[beam_group.ID[0]-1].story)+str("F"),beam_group.group_name,"H",
+    #                              beams[beam_group.ID[0]-1].H,beams[beam_group.ID[0]-1].B,beams[beam_group.ID[0]-1].t1,
+    #                          beams[beam_group.ID[0]-1].t2,beams[beam_group.ID[0]-1].r,temp_text])
+    #         elif str(beams[beam_group.ID[0]-1].story)+str("F") == max_story_name:#最上層はRFとする
+    #             writer.writerow(["RF",beam_group.group_name,"H",
+    #                              beams[beam_group.ID[0]-1].H,beams[beam_group.ID[0]-1].B,beams[beam_group.ID[0]-1].t1,
+    #                          beams[beam_group.ID[0]-1].t2,beams[beam_group.ID[0]-1].r,temp_text])
 
+#RESP-D向けの部材グルーピング出力
+    #層方向の関係にある梁部材抽出
+    data_for_sort=[]
+    for beam in beams:
+        data_for_sort.append([beam.no,beam.story,beam.group_name,nodes[beam.i-1].x,nodes[beam.i-1].y,
+                              nodes[beam.j-1].x,nodes[beam.j-1].y])
+    sort_beam = pd.DataFrame(data_for_sort)
+    sorted_beam = sort_beam.sort_values(by=[3,4,5])
+    mark=[]
+    count=1
+    for i in range(len(sorted_beam)):
+        if i == len(sorted_beam)-1:
+            mark.append("G" + str(count))
+        if i != 0:
+            if sorted_beam.iloc[i-1][3] == sorted_beam.iloc[i][3] and sorted_beam.iloc[i-1][4] == sorted_beam.iloc[i][4] \
+                    and sorted_beam.iloc[i-1][5] == sorted_beam.iloc[i][5]:
+                mark.append("G"+str(count))
+            else:
+                mark.append("G"+str(count))
+                count+= 1
+    sorted_beam["mark"]=mark #層方向に並ぶ部材に同じマークを付ける
+    #マークごとに符号確認
+    test_mark = sorted(set(mark), key=lambda x: int(x[1:]))
+    i=0
+    while i < len(test_mark):
+        j=0
+        test1 = sorted_beam[sorted_beam["mark"] == test_mark[i]]
+        while j < len(test_mark):
+            test2 = sorted_beam[sorted_beam["mark"] == test_mark[j]]
+            if test_mark[i] != test_mark[j]:#自分自身以外と比較
+                if all(x == y for x, y in zip(list(test1[2]), list(test2[2]))) and len(test1) == len(test2):#比較対象のグループ項目がすべて同じ場合書き換える
+                    sorted_beam.loc[sorted_beam["mark"] == test_mark[j], "mark"] = test_mark[i]
+                    sorted_beam.loc[sorted_beam["mark"] == test_mark[i], "mark"] = test_mark[i]
+                    count += 1
+            j+=1
+        i+= 1
+
+    #層方向の関係にある柱部材抽出
+    data_for_sort=[]
+    for column in columns:
+        data_for_sort.append([column.no,column.story,column.group_name,nodes[column.i-1].x,nodes[column.i-1].y])
+    sort_column = pd.DataFrame(data_for_sort)
+    sorted_column = sort_column.sort_values(by=[3,4])
+    mark=[]
+    count=1
+    for i in range(len(sorted_column)):
+        if i == len(sorted_column)-1:
+            mark.append("C" + str(count))
+        if i != 0:
+            if sorted_column.iloc[i-1][3] == sorted_column.iloc[i][3] and sorted_column.iloc[i-1][4] == sorted_column.iloc[i][4]:
+                mark.append("C"+str(count))
+            else:
+                mark.append("C"+str(count))
+                count+= 1
+    sorted_column["mark"]=mark #層方向に並ぶ部材に同じマークを付ける
+    #マークごとに符号確認
+    test_mark = sorted(set(mark), key=lambda x: int(x[1:]))
+    i=0
+    while i < len(test_mark):
+        j=0
+        test1 = sorted_column[sorted_column["mark"] == test_mark[i]]
+        while j < len(test_mark):
+            test2 = sorted_column[sorted_column["mark"] == test_mark[j]]
+            if test_mark[i] != test_mark[j]:#自分自身以外と比較
+                if all(x == y for x, y in zip(list(test1[2]), list(test2[2]))) and len(test1) == len(test2):#比較対象のグループ項目がすべて同じ場合書き換える
+                    sorted_column.loc[sorted_column["mark"] == test_mark[j], "mark"] = test_mark[i]
+                    sorted_column.loc[sorted_column["mark"] == test_mark[i], "mark"] = test_mark[i]
+                    count += 1
+            j+=1
+        i+= 1
+
+    #使っている柱梁グループ名の抽出
+    rec_column_mark=[]
+    rec_beam_mark=[]
+    for i in sorted_column["mark"]:
+        rec_column_mark.append(i)
+    rec_column_mark = set(rec_column_mark)
+    for i in sorted_beam["mark"]:
+        rec_beam_mark.append(i)
+    rec_beam_mark = set(rec_beam_mark)
+
+    for column_flag in rec_column_mark:
+        temp = sorted_column[sorted_column["mark"] == column_flag]
+        column_no = list(temp[0])
+        column_mark = list(temp['mark'])
+        column_story = list(temp[1])
+        for i in range(len(column_mark)):
+            columns[column_no[i]-1].group_name_for_RESP = column_mark[i]#整理したグループ名を柱クラスに登録
+    for beam_flag in rec_beam_mark:
+        temp = sorted_beam[sorted_beam["mark"] == beam_flag]
+        beam_no = list(temp[0])
+        beam_mark = list(temp['mark'])
+        beam_story = list(temp[1])
+        for i in range(len(beam_mark)):
+            beams[beam_no[i]-1].group_name_for_RESP = beam_mark[i]#整理したグループ名を梁クラスに登録
+
+    # csvファイルにデータを書き込む
     #柱グループ諸元の出力
-    with open(output_file_column_csv + '.csv', mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file, quoting=csv.QUOTE_NONE, escapechar='\\')
-        writer.writerow(['//Floor', 'Mark', 'Shape', 'H', 'B', 'tw', 'tf', 'r', 'MAT'])
-        for column_group in column_groups:
-            if columns[column_group.ID[0] - 1].F == 295:
-                if columns[column_group.ID[0] - 1].H <= 550:#柱せい550mm以下はBCR
-                    temp_text = "BCR295"#F値が235ならSS400
-                elif columns[column_group.ID[0] - 1].H > 550:#柱せい550mmを超える場合BCP
-                    temp_text = "BCP295"
-                else:
-                    temp_text = "Error"
-            elif columns[column_group.ID[0]-1].F == 325:
-                temp_text = "BCP325"#F値が325ならBCP325
+    group_output_column = pd.DataFrame()
+    for column in columns:
+        if column.F == 295:
+            if column.H <= 550:  # 柱せい550mm以下はBCR
+                temp_text = "BCR295"  # F値が235ならSS400
+            elif column.H > 550:  # 柱せい550mmを超える場合BCP
+                temp_text = "BCP295"
             else:
                 temp_text = "Error"
+        elif column.F == 325:
+            temp_text = "BCP325"  # F値が325ならBCP325
+        else:
+            temp_text = "Error"
 
-            writer.writerow([str(columns[column_group.ID[0]-1].story)+str("F"),column_group.group_name,"Box",
-                                 columns[column_group.ID[0]-1].H,columns[column_group.ID[0]-1].t,
-                             columns[column_group.ID[0]-1].t,columns[column_group.ID[0]-1].r,temp_text])
+        new_row_data={
+            "//Floor" : str(column.story) + str("F"),
+            "Mark" : column.group_name_for_RESP,
+            "Shape" : "Box",
+            "H" : column.H,
+            "B" : column.H,
+            "tw" : column.t,
+            "tf" : column.t,
+            "r" : column.r,
+            "MAT" : temp_text
+        }
 
-    #梁グループ諸元の出力
-    #対象架構の最上層の検出
+        group_output_column = group_output_column.append(new_row_data, ignore_index=True)
+
+    group_output_column = group_output_column.drop_duplicates()#重複データを削除
+    group_output_column = group_output_column.sort_values(by=["Mark","//Floor"])  # データをソート
+    group_output_column.to_csv(output_file_column_csv+".csv", index=False)#柱断面リストをcsv出力
+
+    # #梁グループ諸元の出力
+    # #対象架構の最上層の検出
     max_story_name = str(len(layers)+1) +"F"
 
-    with open(output_file_girder_csv + '.csv', mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file, quoting=csv.QUOTE_NONE, escapechar='\\')
-        writer.writerow(['//Floor', 'Mark', 'Shape', 'H', 'B', 'tw', 'tf', 'r', 'MAT'])
-        for beam_group in beam_groups:
-            if beams[beam_group.ID[0] - 1].F == 235:
-                temp_text = "SS400"#F値が235ならSS400
-            elif beams[beam_group.ID[0]-1].F == 325:
-                temp_text = "SM490"#F値が325ならSM490
-            else:
-                temp_text = "Error"
+    group_output_beam = pd.DataFrame()
+    for beam in beams:
+        if beam.F == 235:
+            temp_text = "SS400"  # F値が235ならSS400
+        elif beam.F == 325:
+            temp_text = "SM490"  # F値が325ならSM490
+        else:
+            temp_text = "Error"
 
-            if str(beams[beam_group.ID[0]-1].story)+str("F") != max_story_name:
-                writer.writerow([str(beams[beam_group.ID[0]-1].story)+str("F"),beam_group.group_name,"H",
-                                 beams[beam_group.ID[0]-1].H,beams[beam_group.ID[0]-1].B,beams[beam_group.ID[0]-1].t1,
-                             beams[beam_group.ID[0]-1].t2,beams[beam_group.ID[0]-1].r,temp_text])
-            elif str(beams[beam_group.ID[0]-1].story)+str("F") == max_story_name:#最上層はRFとする
-                writer.writerow(["RF",beam_group.group_name,"H",
-                                 beams[beam_group.ID[0]-1].H,beams[beam_group.ID[0]-1].B,beams[beam_group.ID[0]-1].t1,
-                             beams[beam_group.ID[0]-1].t2,beams[beam_group.ID[0]-1].r,temp_text])
+        if str(beam.story) + str("F") != max_story_name:
+            story_name = str(beam.story) + str("F")
+        else:
+            story_name = "RF"
+
+        new_row_data = {
+            "//Floor": story_name,
+            "Mark": beam.group_name_for_RESP,
+            "Shape": "H",
+            "H": beam.H,
+            "B": beam.B,
+            "tw": beam.t1,
+            "tf": beam.t2,
+            "r": beam.r,
+            "MAT": temp_text
+        }
+
+        group_output_beam = group_output_beam.append(new_row_data, ignore_index=True)
+
+    group_output_beam = group_output_beam.drop_duplicates()  # 重複データを削除
+    group_output_beam = group_output_beam.sort_values(by=["Mark", "//Floor"])  # データをソート
+    group_output_beam.to_csv(output_file_girder_csv + ".csv", index=False)  # 梁断面リストをcsv出力
 
     #jsonファイル出力
     #各構面に関するデータ整理
@@ -166,7 +332,7 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
         temp = {}
         temp["BottomNodeId"] = int(column.i)
         temp["TopNodeId"] = int(column.j)
-        temp["Mark"] = column.group_name
+        temp["Mark"] = column.group_name_for_RESP
         column_info.append(temp)
 
     dict["Model"]["MemberArrangement"]["Columns"] = column_info
@@ -177,7 +343,7 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
         temp = {}
         temp["StartNodeId"] = int(beam.i)
         temp["EndNodeId"] = int(beam.j)
-        temp["Mark"] = beam.group_name
+        temp["Mark"] = beam.group_name_for_RESP
         beam_info.append(temp)
 
     dict["Model"]["MemberArrangement"]["Girders"] = beam_info
@@ -199,6 +365,7 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
     dict["SelectionStrategy"] = {}
     dict["SelectionStrategy"]["Margin"] = input_data['Margin']
     dict["SelectionStrategy"]["BaseplateListPath"] = input_data['BaseplateListPath']
+    dict["SelectionStrategy"]["ConvergencePriority"] = input_data['ConvergencePriority']
     dict["SelectionStrategy"]["Sections"] = input_data['SelectionStrategy']["Sections"]
 
     with open('generator_case1.json', 'w') as f:

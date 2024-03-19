@@ -47,6 +47,7 @@ Load:
 # ’f–Ê‘I’è•ûj
 Margin: 1.1
 BaseplateListPath: "baseplate.csv"
+ConvergencePriority: true
 SelectionStrategy:
   Sections:
     - Type: SteelGirder

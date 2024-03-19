@@ -212,6 +212,7 @@ class Beam():
         self.F = []#FF
 
         self.group_name = [] #グルーピングの名前
+        self.group_name_for_RESP = [] #RESP出力用のグループ名
 
     # 柱のクラス
 class Column():
@@ -233,6 +234,9 @@ class Column():
         self.H_initial = []
         self.t_initial = []
         self.r_initial = []
+        self.H_phase1 = []#1回目の応力解析に基づく断面
+        self.t_phase1 = []
+        self.r_phase1 = []
         self.stiff_ratio_x = []#stiff_ratio_x#剛比
         self.stiff_ratio_y = []#stiff_ratio_y
         self.stiff_ratio_x_initial = []#初期断面の剛比
@@ -311,6 +315,7 @@ class Column():
         self.axial_column_y_Mp = []
 
         self.group_name = []  # グルーピングの名前
+        self.group_name_for_RESP = [] #RESP出力用のグループ名
 
     # 層のクラス
 class Layer():
