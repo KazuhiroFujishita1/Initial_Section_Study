@@ -12,52 +12,6 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
     output_file_column_csv = input_data['Output_file_column_name']
     output_file_girder_csv = input_data['Output_file_girder_name']
 
-    # # csvファイルにデータを書き込む
-    # #柱グループ諸元の出力
-    # with open(output_file_column_csv + '.csv', mode='w', newline='', encoding='utf-8') as file:
-    #     writer = csv.writer(file, quoting=csv.QUOTE_NONE, escapechar='\\')
-    #     writer.writerow(['//Floor', 'Mark', 'Shape', 'H', 'B', 'tw', 'tf', 'r', 'MAT'])
-    #     for column_group in column_groups:
-    #         if columns[column_group.ID[0] - 1].F == 295:
-    #             if columns[column_group.ID[0] - 1].H <= 550:#柱せい550mm以下はBCR
-    #                 temp_text = "BCR295"#F値が235ならSS400
-    #             elif columns[column_group.ID[0] - 1].H > 550:#柱せい550mmを超える場合BCP
-    #                 temp_text = "BCP295"
-    #             else:
-    #                 temp_text = "Error"
-    #         elif columns[column_group.ID[0]-1].F == 325:
-    #             temp_text = "BCP325"#F値が325ならBCP325
-    #         else:
-    #             temp_text = "Error"
-    #
-    #         writer.writerow([str(columns[column_group.ID[0]-1].story)+str("F"),column_group.group_name,"Box",
-    #                              columns[column_group.ID[0]-1].H,columns[column_group.ID[0]-1].t,
-    #                          columns[column_group.ID[0]-1].t,columns[column_group.ID[0]-1].r,temp_text])
-    #
-    # #梁グループ諸元の出力
-    # #対象架構の最上層の検出
-    # max_story_name = str(len(layers)+1) +"F"
-    #
-    # with open(output_file_girder_csv + '.csv', mode='w', newline='', encoding='utf-8') as file:
-    #     writer = csv.writer(file, quoting=csv.QUOTE_NONE, escapechar='\\')
-    #     writer.writerow(['//Floor', 'Mark', 'Shape', 'H', 'B', 'tw', 'tf', 'r', 'MAT'])
-    #     for beam_group in beam_groups:
-    #         if beams[beam_group.ID[0] - 1].F == 235:
-    #             temp_text = "SS400"#F値が235ならSS400
-    #         elif beams[beam_group.ID[0]-1].F == 325:
-    #             temp_text = "SM490"#F値が325ならSM490
-    #         else:
-    #             temp_text = "Error"
-    #
-    #         if str(beams[beam_group.ID[0]-1].story)+str("F") != max_story_name:
-    #             writer.writerow([str(beams[beam_group.ID[0]-1].story)+str("F"),beam_group.group_name,"H",
-    #                              beams[beam_group.ID[0]-1].H,beams[beam_group.ID[0]-1].B,beams[beam_group.ID[0]-1].t1,
-    #                          beams[beam_group.ID[0]-1].t2,beams[beam_group.ID[0]-1].r,temp_text])
-    #         elif str(beams[beam_group.ID[0]-1].story)+str("F") == max_story_name:#最上層はRFとする
-    #             writer.writerow(["RF",beam_group.group_name,"H",
-    #                              beams[beam_group.ID[0]-1].H,beams[beam_group.ID[0]-1].B,beams[beam_group.ID[0]-1].t1,
-    #                          beams[beam_group.ID[0]-1].t2,beams[beam_group.ID[0]-1].r,temp_text])
-
 #RESP-D向けの部材グルーピング出力
     #層方向の関係にある梁部材抽出
     data_for_sort=[]
