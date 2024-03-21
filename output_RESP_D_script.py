@@ -176,6 +176,7 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
 
     group_output_beam = group_output_beam.drop_duplicates()  # 重複データを削除
     group_output_beam = group_output_beam.sort_values(by=["Mark", "//Floor"])  # データをソート
+    group_output_beam = group_output_beam[group_output_beam["MAT"] != "Error"]  #"MAT"がErrorとなっているデータを除外（基礎梁）
     group_output_beam.to_csv(output_file_girder_csv + ".csv", index=False)  # 梁断面リストをcsv出力
 
     #jsonファイル出力
@@ -294,11 +295,12 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
     # 梁情報のリスト化・代入
     beam_info = []
     for beam in beams:
-        temp = {}
-        temp["StartNodeId"] = int(beam.i)
-        temp["EndNodeId"] = int(beam.j)
-        temp["Mark"] = beam.group_name_for_RESP
-        beam_info.append(temp)
+        if beam.category != "BB":#基礎梁以外をモデルデータとして出力
+            temp = {}
+            temp["StartNodeId"] = int(beam.i)
+            temp["EndNodeId"] = int(beam.j)
+            temp["Mark"] = beam.group_name_for_RESP
+            beam_info.append(temp)
 
     dict["Model"]["MemberArrangement"]["Girders"] = beam_info
 
