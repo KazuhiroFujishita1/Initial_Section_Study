@@ -7,6 +7,8 @@ from member_class import *
 from set_initial_section import *
 from calc_stress import *
 
+from diaphragm_resolver import *
+
 # 隣接グループの梁せいチェック
 def check_beam_height(nodes, beam_groups, beams):
     # 各梁グループが隣接する梁を調べる
@@ -46,6 +48,99 @@ def check_beam_height(nodes, beam_groups, beams):
                 break
 
     return beam_height_condition, check1
+
+def resolve_diaphragm_constraint(nodes, beam_groups, beams, selected_beam_list):
+
+    # 各階ごとに節点、梁を仕分け
+    x_list = list(sorted(set(map(lambda node: node.x, nodes)))) 
+    y_list = list(sorted(set(map(lambda node: node.y, nodes))))
+    z_list = list(sorted(set(map(lambda node: node.z, nodes))))
+
+    dict_beam = {}
+    plans = []
+    for z in z_list:
+        filtered_beams = \
+            filter(lambda beam: \
+                   nodes[beam.i - 1].z == z and \
+                   nodes[beam.j - 1].z == z, \
+                   beams)
+
+        dict_section_specs = {}
+
+        beam_coordination_sources = []
+        for beam in filtered_beams:
+            dict_beam[beam.no] = beam
+
+            node_i = nodes[beam.i - 1]
+            node_j = nodes[beam.j - 1]
+            xi_index = x_list.index(node_i.x)
+            yi_index = y_list.index(node_i.y)
+            xj_index = x_list.index(node_j.x)
+            yj_index = y_list.index(node_j.y)
+
+            position_i = PlanAxisPosition(xi_index + 1, yi_index + 1)
+            position_j = PlanAxisPosition(xj_index + 1, yj_index + 1)
+
+            beam_coordination_sources.append( \
+                [beam.no, position_i, position_j, beam.group_name] \
+            )
+
+            if not (beam.group_name in dict_section_specs):
+                dict_section_specs[beam.group_name] = beam.H
+
+        group_names = list(dict_section_specs.keys())
+        beam_section_specs = []
+
+        # TODO 選定候補断面
+        selectable_section_list = map( \
+            lambda section: float(section['H']), \
+            selected_beam_list
+        ) 
+
+        group_index = 1
+        for group_name in group_names:
+            h = dict_section_specs[group_name]
+            beam_section_specs.append( \
+                BeamSectionSpec( group_index, h, selectable_section_list )
+            )
+            group_index += 1
+
+        beam_coordinations = map( \
+            lambda items: \
+                BeamCoordination(items[0], items[1], items[2], beam_section_specs.index(items[3]) + 1), \
+            beam_coordination_sources
+        )
+        plans.append( Plan(beam_coordinations, BeamSectionList(beam_section_specs)) )
+
+
+    resolver = DiaphragmResolver(plans, DiaphragmResolverConfig())
+    resolver.resolve()    
+
+    # 断面割り当てにフィードバックする
+    # beam.no を頼りに
+    for plan in resolver.all_floor_plans:
+        for beam_coordination in plan.beam_coordinations:
+            beam = dict_beam[beam_coordination.no]
+            section = plan.section_list.find(beam.section_no)
+            h = section.depth
+
+            # 断面サイズ書き換え
+            # 選定候補断面でZが小さくならず
+            # タイプが同じ系統のものから選択
+            # todo 
+
+            # group_nameの書き換え
+            # 符号変更が有効ならグループ名を追加して割り当ても変更
+            # todo 
+            current_group_name = beam.group_name
+            current_group_no = beam_section_specs.index(current_group_name) + 1 
+            if beam_coordination.section_no != current_group_no:
+                # todo 
+                #beam.group_name = ""
+                #beam_groups.append()
+                pass
+
+
 
 #ダイヤフラムの形状制約に基づく梁せいの調整
 def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):

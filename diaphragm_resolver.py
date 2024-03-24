@@ -46,7 +46,8 @@ class PlanAxisPosition:
 
 # 梁配置
 class BeamCoordination:
-    def __init__(self, start_position, end_position, section_no):
+    def __init__(self, no, start_position, end_position, section_no):
+        self.no = no
         self.start_position = start_position
         self.end_position = end_position
         self.section_no = section_no
