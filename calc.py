@@ -71,6 +71,13 @@ def start():
     # 更新後断面における剛比算定
     calc_stiffness_ratio(columns, beams, nodes)
 
+    # 柱断面のグルーピング
+    for i in range(len(columns)):
+        temp_list = map(lambda i: [columns[i].no, columns[i].H, columns[i].t, columns[i].story], range(len(columns)))
+        table_columns = ["No", "H", "t", "story"]
+        group_data = make_group(temp_list, table_columns, str("story"), str("H"), str("t"))  # グルーピング
+        column_groups = [member_class.Column_Group(*data) for data in group_data]  # グループのインスタンス定義
+
 #グルーピング出力
     grouping_output(beams,columns,column_groups,beam_groups)
 
@@ -82,8 +89,5 @@ def start():
 
 #RESP-Dscriptの出力
     output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_groups,beam_groups)
-
-    for group in beam_groups:
-        print(group.group_name,group.ID)
 
     return nodes, beams, columns, layers, maximum_height
