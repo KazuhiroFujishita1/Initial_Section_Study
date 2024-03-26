@@ -3,46 +3,77 @@ Output_file_column_name: "initial-section-column"
 Output_file_girder_name: "initial-section-girder"
 # â◊èdèÓïÒ
 Load:
+  OuterwallLoadList:
+    - Mark: ECP
+      Weight: 1100
+    - Mark: ACW
+      Weight: 1000
   OuterwallLoadListPath: "./outer-wall-load.csv"
   OuterWalls:
     - Floor: [1F, RF]
       Frame: [Y1, Y1]
       Axis: [X1, X3]
-      Type: ALC100
+      Type: ACW
     - Floor: [1F, RF]
       Frame: [Y5, Y5]
       Axis: [X1, X3]
-      Type: ALC100
+      Type: ECP
     - Floor: [1F, RF]
       Frame: [X1, X1]
       Axis: [Y1, Y5]
-      Type: ALC100
+      Type: ECP
     - Floor: [1F, RF]
       Frame: [X4, X4]
       Axis: [Y2, Y4]
-      Type: ALC100
+      Type: ECP
     - Floor: [1F, RF]
       Frame: [X3, X3]
       Axis: [Y1, Y2]
-      Type: ALC100
+      Type: ECP
     - Floor: [1F, RF]
       Frame: [X3, X3]
       Axis: [Y4, Y5]
-      Type: ALC100
+      Type: ECP
     - Floor: [1F, RF]
       Frame: [Y2, Y2]
       Axis: [X3, X4]
-      Type: ALC100
+      Type: ACW
     - Floor: [1F, RF]
       Frame: [Y4, Y4]
       Axis: [X3, X4]
-      Type: ALC100
+      Type: ECP
+  SlabLoadList:
+    - Mark: office
+      Name: office
+      SlabT: 150
+      WeightPerVol: 24
+      DL: 815
+      LL1: 4900
+      LL2: 4900
+      LL3: 1800
+      LL4: 800
+      Snow: FALSE
+    - Mark: Roof
+      Name: Roof
+      SlabT: 150
+      WeightPerVol: 24
+      DL: 3050
+      LL1: 4900
+      LL2: 4900
+      LL3: 1300
+      LL4: 600
+      Snow: FALSE
   SlabLoadListPath: "./slab-load.csv"
   SlabLoads:
-    - Floor: [1F, RF]
+    - Floor: [1F, 8F]
       Xaxis: []
       Yaxis: []
       Type: office
+      Void: false
+    - Floor: [RF, RF]
+      Xaxis: []
+      Yaxis: []
+      Type: Roof
       Void: false
 # ífñ ëIíËï˚êj
 Margin: 1.1

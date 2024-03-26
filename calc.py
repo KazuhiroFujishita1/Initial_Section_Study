@@ -7,6 +7,7 @@ from update_section import *
 from output_section_data import *
 from output_RESP_D_script import *
 from check_column_size import *
+from RESP_batch import *
 import yaml
 
 def start():
@@ -89,5 +90,8 @@ def start():
 
 #RESP-Dscriptの出力
     output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_groups,beam_groups)
+
+#RESP-Dの実行
+    RESP_batch()
 
     return nodes, beams, columns, layers, maximum_height

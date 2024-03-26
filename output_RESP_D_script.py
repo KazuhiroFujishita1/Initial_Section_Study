@@ -309,10 +309,42 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
     dict["Model"]["SteelStructureCondition"] = {"ColumnBaseType":"Fix"}
     dict["Model"]["MarkRules"] = []#一旦markrulesの代入は保留（よくわからない）
 
+    #外壁荷重リストの出力
+    wall_load_mark = []; wall_load_weight= []
+    for i in range(len(input_data['Load']['OuterwallLoadList'])):
+        wall_load_mark.append(input_data['Load']['OuterwallLoadList'][i]['Mark'])
+        wall_load_weight.append(input_data['Load']['OuterwallLoadList'][i]['Weight'])
+    wall_load_data = pd.DataFrame({'//Mark': wall_load_mark, 'Weight(N/m2)': wall_load_weight})
+    wall_load_data.to_csv("outer-wall-load.csv", index=False)
+
     #荷重情報の入力
     dict["Load"]={}
     dict["Load"]["OuterwallLoadListPath"] = input_data['Load']['OuterwallLoadListPath']
     dict["Load"]["OuterWalls"] = input_data['Load']['OuterWalls']
+
+    #スラブ荷重リストの出力
+    slab_load_mark = []; slab_load_name = []; slab_load_slab_T = []
+    slab_load_unit_weight = [];slab_load_DL = [];slab_load_LL1 = [];
+    slab_load_LL2 = [];slab_load_LL3 = [];slab_load_LL4 = []
+    slab_load_snow = []
+    for i in range(len(input_data['Load']['SlabLoadList'])):
+        slab_load_mark.append(input_data['Load']['SlabLoadList'][i]['Mark'])
+        slab_load_name.append(input_data['Load']['SlabLoadList'][i]['Name'])
+        slab_load_slab_T.append(input_data['Load']['SlabLoadList'][i]['SlabT'])
+        slab_load_unit_weight.append(input_data['Load']['SlabLoadList'][i]['WeightPerVol'])
+        slab_load_DL.append(input_data['Load']['SlabLoadList'][i]['DL'])
+        slab_load_LL1.append(input_data['Load']['SlabLoadList'][i]['LL1'])
+        slab_load_LL2.append(input_data['Load']['SlabLoadList'][i]['LL2'])
+        slab_load_LL3.append(input_data['Load']['SlabLoadList'][i]['LL3'])
+        slab_load_LL4.append(input_data['Load']['SlabLoadList'][i]['LL4'])
+        slab_load_snow.append(input_data['Load']['SlabLoadList'][i]['Snow'])
+
+    slab_load_data = pd.DataFrame({'//Mark': slab_load_mark, 'Name': slab_load_name, 'SlabT(mm)': slab_load_slab_T,
+                                   'WeightPerVol(kN/m3)': slab_load_unit_weight, 'DL(N/m2)': slab_load_DL, 'LL1(N/m2)': slab_load_LL1,
+                                   'LL2(N/m2)': slab_load_LL2, 'LL3(N/m2)': slab_load_LL3, 'LL4(N/m2)': slab_load_LL4,
+                                   'Snow': slab_load_snow})
+    slab_load_data.to_csv("slab-load.csv", index=False)
+
     #スラブ荷重
     dict["Load"]["SlabLoadListPath"] = input_data['Load']['SlabLoadListPath']
     dict["Load"]["SlabLoads"] = input_data['Load']['SlabLoads']
