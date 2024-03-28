@@ -19,6 +19,9 @@ def calc_layer_weight(nodes,beams,columns,layers,maximum_height):
         C0 = data.get('Baseshear')
         Tc = data.get('Tc')
         Z = data.get('Z')
+        resp_path = data.get('RESP_Path')
+        resp_model_create = data.get('RESP_Model_Create')
+        resp_opt = data.get('RESP_Opt')
     else:
         print("calclation condition can not be read.")
 
@@ -58,8 +61,6 @@ def calc_layer_weight(nodes,beams,columns,layers,maximum_height):
             T = 0.02 * maximum_height
     else:
         T=manual_T
-    print(T)
-
 
     #振動特性係数Rtの算定
     if T < Tc:
@@ -124,3 +125,5 @@ def calc_layer_weight(nodes,beams,columns,layers,maximum_height):
                         column.temp_axial_column_y = column.N_Ly #該当する柱の仮の軸力も更新する
                     else:
                         column.N_Ly = column.temp_axial_column_y
+
+    return resp_path, resp_model_create,resp_opt

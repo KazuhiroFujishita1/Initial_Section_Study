@@ -28,7 +28,7 @@ def start():
     detect_connection(nodes, beams, columns)
 
 #層重量の算定
-    calc_layer_weight(nodes,beams,columns,layers,maximum_height)
+    resp_path, resp_model_create,resp_opt = calc_layer_weight(nodes,beams,columns,layers,maximum_height)
 
 #初期仮定断面の設定
     beam_groups,column_groups = \
@@ -92,6 +92,6 @@ def start():
     output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_groups,beam_groups)
 
 #RESP-Dの実行
-    RESP_batch()
+    RESP_batch(resp_path,resp_model_create,resp_opt)
 
     return nodes, beams, columns, layers, maximum_height

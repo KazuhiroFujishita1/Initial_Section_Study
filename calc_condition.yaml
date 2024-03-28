@@ -4,3 +4,6 @@ Manual_T:
 Baseshear: 0.2
 Tc: 0.4
 Z: 1
+RESP_Path: .\bin\Debug\ModelCalcCtrlApp.exe
+RESP_Model_Create: Activate
+RESP_Opt: Activate
