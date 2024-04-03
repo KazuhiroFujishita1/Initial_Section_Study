@@ -7,8 +7,6 @@ from member_class import *
 from set_initial_section import *
 from calc_stress import *
 
-from diaphragm_resolver import *
-
 # 隣接グループの梁せいチェック
 def check_beam_height(nodes, beam_groups, beams):
     # 各梁グループが隣接する梁を調べる
@@ -49,99 +47,6 @@ def check_beam_height(nodes, beam_groups, beams):
 
     return beam_height_condition, check1
 
-def resolve_diaphragm_constraint(nodes, beam_groups, beams, selected_beam_list):
-
-    # 各階ごとに節点、梁を仕分け
-    x_list = list(sorted(set(map(lambda node: node.x, nodes)))) 
-    y_list = list(sorted(set(map(lambda node: node.y, nodes))))
-    z_list = list(sorted(set(map(lambda node: node.z, nodes))))
-
-    dict_beam = {}
-    plans = []
-    for z in z_list:
-        filtered_beams = \
-            filter(lambda beam: \
-                   nodes[beam.i - 1].z == z and \
-                   nodes[beam.j - 1].z == z, \
-                   beams)
-
-        dict_section_specs = {}
-
-        beam_coordination_sources = []
-        for beam in filtered_beams:
-            dict_beam[beam.no] = beam
-
-            node_i = nodes[beam.i - 1]
-            node_j = nodes[beam.j - 1]
-            xi_index = x_list.index(node_i.x)
-            yi_index = y_list.index(node_i.y)
-            xj_index = x_list.index(node_j.x)
-            yj_index = y_list.index(node_j.y)
-
-            position_i = PlanAxisPosition(xi_index + 1, yi_index + 1)
-            position_j = PlanAxisPosition(xj_index + 1, yj_index + 1)
-
-            beam_coordination_sources.append( \
-                [beam.no, position_i, position_j, beam.group_name] \
-            )
-
-            if not (beam.group_name in dict_section_specs):
-                dict_section_specs[beam.group_name] = beam.H
-
-        group_names = list(dict_section_specs.keys())
-        beam_section_specs = []
-
-        # TODO 選定候補断面
-        selectable_section_list = map( \
-            lambda section: float(section['H']), \
-            selected_beam_list
-        ) 
-
-        group_index = 1
-        for group_name in group_names:
-            h = dict_section_specs[group_name]
-            beam_section_specs.append( \
-                BeamSectionSpec( group_index, h, selectable_section_list )
-            )
-            group_index += 1
-
-        beam_coordinations = map( \
-            lambda items: \
-                BeamCoordination(items[0], items[1], items[2], beam_section_specs.index(items[3]) + 1), \
-            beam_coordination_sources
-        )
-        plans.append( Plan(beam_coordinations, BeamSectionList(beam_section_specs)) )
-
-
-    resolver = DiaphragmResolver(plans, DiaphragmResolverConfig())
-    resolver.resolve()    
-
-    # 断面割り当てにフィードバックする
-    # beam.no を頼りに
-    for plan in resolver.all_floor_plans:
-        for beam_coordination in plan.beam_coordinations:
-            beam = dict_beam[beam_coordination.no]
-            section = plan.section_list.find(beam.section_no)
-            h = section.depth
-
-            # 断面サイズ書き換え
-            # 選定候補断面でZが小さくならず
-            # タイプが同じ系統のものから選択
-            # todo 
-
-            # group_nameの書き換え
-            # 符号変更が有効ならグループ名を追加して割り当ても変更
-            # todo 
-            current_group_name = beam.group_name
-            current_group_no = beam_section_specs.index(current_group_name) + 1 
-            if beam_coordination.section_no != current_group_no:
-                # todo 
-                #beam.group_name = ""
-                #beam_groups.append()
-                pass
-
-
-
 #ダイヤフラムの形状制約に基づく梁せいの調整
 def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
 
@@ -172,7 +77,6 @@ def revise_beam_height(nodes,beam_groups,beams,selected_beam_list):
 
     # 各梁グループについて、隣接する梁のグループのせいとの関係性を調べる（小さい差の調整）
     for beam_group in beam_groups:
-        print(beam_group.group_name)
         test_H = beams[beam_group.ID[0] - 1].H  # グループに属する梁のせい
         for j in beam_group.neighbor_group_no:
             neighbor_H = beams[beam_groups[j-1].ID[0] - 1].H  # 隣接する梁グループに属する梁のせい
@@ -458,7 +362,6 @@ def update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_group
                 elif beams[no-1].direction == "Y":
                     beams[no-1].rev_delta_y = temp_delta_y
         #応力による選定断面によるグループの梁諸元更新
-        print(max_list_no_stress)
         #print(selected_beam_list[selected_beam_list['No']==max_list_no_stress]['No'])
         for no in beam_group.ID:
             if beams[no-1].category != "BB":#基礎梁以外の断面を更新
@@ -619,12 +522,12 @@ def update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_group
     #         beam.t2_phase2 = beam.t2
     #         beam.r_phase2 = beam.r
 
-    #応力に基づく梁断面更新後の梁断面の再グルーピング
-    temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
-          for i in range(len(beams))]
-    table_columns = ["No","H","B","story"]
-    group_data = make_group(temp_list,table_columns,str("story"),str("H"),str("B"))#グルーピング
-    beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
+    # #応力に基づく梁断面更新後の梁断面の再グルーピング
+    # temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
+    #       for i in range(len(beams))]
+    # table_columns = ["No","H","B","story"]
+    # group_data = make_group(temp_list,table_columns,str("story"),str("H"),str("B"))#グルーピング
+    # beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
     # #梁せいの調整アルゴリズムの実行
     # while True:
@@ -656,12 +559,12 @@ def update_beam_section(nodes,beams,beam_select_mode,EE,column_groups,beam_group
             else:
                 beam.K = beam.I/beam.length*m_to_mm**2*beam.pai#床スラブの剛性増大率考慮
 
-    #ダイヤフラム調整後の梁断面の再グルーピング
-    temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
-          for i in range(len(beams))]
-    table_columns = ["No","H","B","story"]
-    group_data = make_group(temp_list,table_columns,str("story"),str("H"),str("B"))#グルーピング
-    beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
+    # #ダイヤフラム調整後の梁断面の再グルーピング
+    # temp_list=[[beams[i].no,beams[i].H,beams[i].B,beams[i].story]
+    #       for i in range(len(beams))]
+    # table_columns = ["No","H","B","story"]
+    # group_data = make_group(temp_list,table_columns,str("story"),str("H"),str("B"))#グルーピング
+    # beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
 
     return beam_groups
 
@@ -732,6 +635,15 @@ def member_strength_check(nodes,beams,columns,layers):
     for beam in beams:
         if beam.category != "BB":#基礎梁以外の断面について算定
             beam.Mp = beam.F *1.0/1000.0*1000*1000* beam.Zp
+
+    #柱軸力のゼロクリア
+    for column in columns:
+        column.temp_axial_column_x_Mp = 0
+        column.temp_axial_column_y_Mp = 0
+        column.temp_axial_column_x = 0
+        column.temp_axial_column_y = 0
+        column.axial_column_x_Mp = 0
+        column.axial_column_y_Mp = 0
 
     #柱の全塑性モーメント算定時には梁両端ヒンジ時の軸力を考慮
     #各柱の軸力算定（梁両端ヒンジ時）
@@ -806,6 +718,7 @@ def member_strength_check(nodes,beams,columns,layers):
         #低下率を考慮した柱の全塑性曲げモーメントの算定
         column.Mpx = column.decrement_ratio_x * column.F * 1.0/1000.0*1000*1000* column.Zp
         column.Mpy = column.decrement_ratio_y * column.F * 1.0/1000.0*1000*1000* column.Zp
+        print(column.Mpx,column.Mpy,column.decrement_ratio_x,column.decrement_ratio_y)
 
     #各節点における柱梁耐力比の確認
     for node in nodes:
@@ -999,6 +912,7 @@ def calc_column_thickness(columns,flag):
 def update_column_section(nodes,beams,columns,layers,EE,column_groups,beam_groups,beam_select_mode,flag):
     #剛性チェック、柱梁耐力比に基づく必要最低柱断面の算定
     calc_limit_column_size(nodes,layers,columns,beams,EE)
+
     #応力に基づく柱断面の必要板厚の算定
     calc_column_thickness(columns,flag)
     #更新後断面における剛比算定
@@ -1009,5 +923,6 @@ def update_column_section(nodes,beams,columns,layers,EE,column_groups,beam_group
     table_columns = ["No", "H", "t", "story"]
     group_data = make_group(temp_list, table_columns, str("story"), str("H"), str("t"))  # グルーピング
     column_groups = [member_class.Column_Group(*data) for data in group_data]  # グループのインスタンス定義
+
 
     return column_groups

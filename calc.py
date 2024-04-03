@@ -49,8 +49,6 @@ def start():
 #柱断面の更新
     column_groups = update_column_section(nodes, beams, columns, layers, EE,column_groups,beam_groups,beam_select_mode,flag)
 
-    # 下階柱のサイズを直上階柱のサイズに比較して上げる（こちらを先にする）
-    check_column_size(nodes, columns, layers)
     # 更新後断面における剛比算定
     calc_stiffness_ratio(columns, beams, nodes)
 
@@ -69,8 +67,6 @@ def start():
 
     # 下階柱のサイズを直上階柱のサイズに比較して上げる（こちらを先にする）
     check_column_size(nodes, columns, layers)
-    # 更新後断面における剛比算定
-    calc_stiffness_ratio(columns, beams, nodes)
 
     # 柱断面のグルーピング
     for i in range(len(columns)):

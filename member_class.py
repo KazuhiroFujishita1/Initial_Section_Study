@@ -109,8 +109,8 @@ class Beam():
         self.length = beam_length
         self.I = []#beam_section_I
         self.K = [] #剛度
-        self.eq_beam_stiff_ratio_i = [] #i端側の柱に考慮する等価な基礎梁剛比
-        self.eq_beam_stiff_ratio_j = [] #j端側の柱に考慮する等価な基礎梁剛比
+        self.eq_beam_stiff_ratio_i = [] #i端側の梁に考慮する等価な基礎梁剛比
+        self.eq_beam_stiff_ratio_j = [] #j端側の梁に考慮する等価な基礎梁剛比
         self.pai = beam_phai #床スラブの剛性増大率
         self.pai2 = beam_phai2 #床スラブの剛性増大率（せい600mm以下）
         self.calc_phai = [] #計算に用いるΦ
@@ -213,6 +213,8 @@ class Beam():
 
         self.group_name = [] #グルーピングの名前
         self.group_name_for_RESP = [] #RESP出力用のグループ名
+
+        self.beam_place = [] #大梁の位置（外梁か内梁か）
 
     # 柱のクラス
 class Column():

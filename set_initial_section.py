@@ -5,6 +5,29 @@ import itertools
 import member_class
 import calc_stress
 
+#初期梁のグルーピング
+def make_group4(list, list_name, key1, key2, key3, key4):
+
+    data_frame = pd.DataFrame(list, columns=list_name)
+    sorted_frame = data_frame.sort_values(by=[key1, key2, key3, key4])
+
+    group_data = []
+    temp = 1
+    for name, group in sorted_frame.groupby([key1]):
+        for name2, group2 in group.groupby([key2]):
+            for name3, group3 in group2.groupby([key3]):
+                for name4, group4 in group3.groupby([key4]):
+                    group_data.append((temp, str(name) + 'F_' + str(name2) + '_' + str(name3) + '_' + str(name4), group4['No'].values.tolist()))
+                    temp += 1
+    group_data = sorted(group_data, reverse=True)
+    temp = 1
+    group_data_rev = []
+    for tem in group_data:
+         tem = (temp, tem[1], tem[2])
+         group_data_rev.append(tem)
+         temp += 1
+    return group_data_rev
+
 #部材のグルーピング
 def make_group(list,list_name,key1,key2,key3):
 
@@ -28,6 +51,26 @@ def make_group(list,list_name,key1,key2,key3):
          group_data_rev.append(tem)
          temp+= 1
     return group_data_rev
+
+#端部形状から内梁か外梁か判定させる
+def identify_beam_position(beams,nodes):
+    for beam in beams:
+        temp_i_no = 0
+        temp_j_no = 0
+        #i端j端に取りつく梁の数をカウント(自分自身も含む）
+        for node in nodes:
+            if node.no == beam.i:
+                temp_i_no += len(node.beam_no_each_node2_x)
+                temp_i_no += len(node.beam_no_each_node2_y)
+            if node.no == beam.j:
+                temp_j_no += len(node.beam_no_each_node2_x)
+                temp_j_no += len(node.beam_no_each_node2_y)
+        #外端梁、内端梁を判定
+        if (temp_i_no <= 3 and temp_j_no <= 2) or (temp_i_no <= 2 and temp_j_no <= 3) \
+                or (temp_i_no == 2 and temp_j_no == 4) or (temp_i_no == 4 and temp_j_no == 2):
+            beam.beam_place = "OB"
+        elif temp_i_no >= 3 and temp_j_no >= 3:
+            beam.beam_place = "IB"
 
 #初期仮定断面の設定
 #Excelで入力した全柱梁部材に対して初期仮定断面を算定する
@@ -174,12 +217,6 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
             beam.F = 0
             beam.r = 0
 
-    #初期梁断面のグルーピング(初期選定断面において梁は階、方向、せいでグルーピング）
-    temp_list = map(lambda i: [beams[i].no, beams[i].H, beams[i].direction, beams[i].story], range(len(beams)))
-    table_columns = ["No","H","direction","story"]
-    group_data = make_group(temp_list,table_columns,str("story"),str("direction"),str("H"))#グルーピング
-    beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
-
     #柱梁の剛比算定
     calc_stress.calc_stiffness_ratio(columns,beams,nodes)
 
@@ -260,5 +297,16 @@ def set_initial_section(nodes,beams, columns, maximum_height,beam_select_mode):
         node.node_member_stiff_y = member_stiff_temp_y
         node.node_member_stiff2_x = member_stiff_temp2_x
         node.node_member_stiff2_y = member_stiff_temp2_y
+
+    #端部形状から内梁か外梁か判定
+    identify_beam_position(beams,nodes)
+
+    #初期梁断面のグルーピング(初期選定断面において梁は階、方向、でグルーピング）
+    temp_list = map(lambda i: [beams[i].no, beams[i].H, beams[i].direction, beams[i].story, beams[i].beam_place], range(len(beams)))
+    table_columns = ["No","H","direction","story","beam_place"]
+    group_data = make_group4(temp_list, table_columns, "H", "direction", "story", "beam_place")#グルーピング
+    beam_groups = [member_class.Beam_Group(*data) for data in group_data]  # インスタンスの定義
+    for beam_group in beam_groups:
+        print(beam_group.group_name)
 
     return beam_groups,column_groups
