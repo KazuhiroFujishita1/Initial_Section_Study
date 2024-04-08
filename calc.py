@@ -22,7 +22,7 @@ def start():
         print("calclation condition can not be read.")
 
 #データの読み込み
-    nodes, beams, columns, layers, maximum_height = read_model()
+    nodes, beams, columns, layers, frames, maximum_height = read_model()
 
 # 部材の接合状況を把握
     detect_connection(nodes, beams, columns)
@@ -85,7 +85,7 @@ def start():
     output_whole_data(columns,beams,nodes,layers)
 
 #RESP-Dscriptの出力
-    output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_groups,beam_groups)
+    output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_groups,beam_groups,frames)
 
 #RESP-Dの実行
     RESP_batch(resp_path,resp_model_create,resp_opt)

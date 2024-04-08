@@ -3,7 +3,7 @@ import json
 import yaml
 import pandas as pd
 
-def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_groups,beam_groups):
+def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_groups,beam_groups,frames):
     #設定yamlファイルの読み込み
     with open("generate_JSON_condition.yaml", 'r') as yml_file:
         input_data = yaml.safe_load(yml_file)
@@ -180,99 +180,133 @@ def output_RESP_D_script(columns,beams,beam_select_mode,nodes,layers,column_grou
     group_output_beam.to_csv(output_file_girder_csv + ".csv", index=False)  # 梁断面リストをcsv出力
 
     #jsonファイル出力
-    #各構面に関するデータ整理
-    #X方向構面
-    #重複座標を削除
-    X_axis=[];Y_axis=[];Z_axis=[]
-    X_axis_name=[];Y_axis_name=[];Z_axis_name=[]
-    for node in nodes:
-        X_axis.append(round(node.x,3))
-        Y_axis.append(round(node.y,3))
-        Z_axis.append(round(node.z,3))
-    X_axis = set(X_axis)
-    Y_axis = set(Y_axis)
-    Z_axis = set(Z_axis)
-    X_axis = sorted(X_axis,reverse=True)
-    Y_axis = sorted(Y_axis,reverse=True)
-    Z_axis = sorted(Z_axis,reverse=True)
-    X_axis_diff=[];Y_axis_diff=[];Z_axis_diff=[]
 
-    #構面間座標の算定
-    if len(X_axis) > 2:
-        for no in range(len(X_axis)-1):
-            X_axis_diff.append(X_axis[no]-X_axis[no+1])
-            X_axis_name.append("X"+str(len(X_axis)-no))
-        X_axis_diff.append(0)
-        X_axis_name.append("X1")
-    elif len(X_axis)<=2:
-        for no in range(len(X_axis)):
-            X_axis_diff.append(X_axis[no])
-            X_axis_name.append("X"+str(len(X_axis)-no))
-    if len(Y_axis) > 2:
-        for no in range(len(Y_axis)-1):
-            Y_axis_diff.append(Y_axis[no] - Y_axis[no+1])
-            Y_axis_name.append("Y"+str(len(Y_axis)-no))
-        Y_axis_diff.append(0)
-        Y_axis_name.append("Y1")
-    elif len(Y_axis) <= 2:
-        for no in range(len(Y_axis)):
-            Y_axis_diff.append(Y_axis[no])
-            Y_axis_name.append("Y"+str(len(X_axis)-no))
-    if len(Z_axis) > 2:
-        for no in range(len(Z_axis)-1):
-            Z_axis_diff.append(Z_axis[no] - Z_axis[no+1])
-            if str(len(Z_axis)-no)+"F" != max_story_name:
-                Z_axis_name.append(str(len(Z_axis)-no)+"F")
-            elif str(len(Z_axis)-no)+"F" == max_story_name:
-                Z_axis_name.append("RF")
-        Z_axis_diff.append(0)
-        Z_axis_name.append("1F")
-    elif len(Z_axis) <= 2:
-        for no in range(len(Z_axis)):
-            Z_axis_diff.append(Z_axis[no])
-            Z_axis_name.append("Z" + str(len(Z_axis) - no))
-
-
-    #jsonファイルの書き出し
+    # #節点のインプットデータに構面情報が定義されていない場合直交座標系を仮定して、各節点へ構面を割り当て(一旦キャンセル）
+    # #各構面に関するデータ整理
+    # #X方向構面
+    # #重複座標を削除
+    # X_axis=[];Y_axis=[];Z_axis=[]
+    # X_axis_name=[];Y_axis_name=[];Z_axis_name=[]
+    # for node in nodes:
+    #     X_axis.append(round(node.x,3))
+    #     Y_axis.append(round(node.y,3))
+    #     Z_axis.append(round(node.z,3))
+    # X_axis = set(X_axis)
+    # Y_axis = set(Y_axis)
+    # Z_axis = set(Z_axis)
+    # X_axis = sorted(X_axis,reverse=True)
+    # Y_axis = sorted(Y_axis,reverse=True)
+    # Z_axis = sorted(Z_axis,reverse=True)
+    # X_axis_diff=[];Y_axis_diff=[];Z_axis_diff=[]
+    #
+    # #構面間座標の算定
+    # if len(X_axis) > 2:
+    #     for no in range(len(X_axis)-1):
+    #         X_axis_diff.append(X_axis[no]-X_axis[no+1])
+    #         X_axis_name.append("X"+str(len(X_axis)-no))
+    #     X_axis_diff.append(0)
+    #     X_axis_name.append("X1")
+    # elif len(X_axis)<=2:
+    #     for no in range(len(X_axis)):
+    #         X_axis_diff.append(X_axis[no])
+    #         X_axis_name.append("X"+str(len(X_axis)-no))
+    # if len(Y_axis) > 2:
+    #     for no in range(len(Y_axis)-1):
+    #         Y_axis_diff.append(Y_axis[no] - Y_axis[no+1])
+    #         Y_axis_name.append("Y"+str(len(Y_axis)-no))
+    #     Y_axis_diff.append(0)
+    #     Y_axis_name.append("Y1")
+    # elif len(Y_axis) <= 2:
+    #     for no in range(len(Y_axis)):
+    #         Y_axis_diff.append(Y_axis[no])
+    #         Y_axis_name.append("Y"+str(len(X_axis)-no))
+    # if len(Z_axis) > 2:
+    #     for no in range(len(Z_axis)-1):
+    #         Z_axis_diff.append(Z_axis[no] - Z_axis[no+1])
+    #         if str(len(Z_axis)-no)+"F" != max_story_name:
+    #             Z_axis_name.append(str(len(Z_axis)-no)+"F")
+    #         elif str(len(Z_axis)-no)+"F" == max_story_name:
+    #             Z_axis_name.append("RF")
+    #     Z_axis_diff.append(0)
+    #     Z_axis_name.append("1F")
+    # elif len(Z_axis) <= 2:
+    #     for no in range(len(Z_axis)):
+    #         Z_axis_diff.append(Z_axis[no])
+    #         Z_axis_name.append("Z" + str(len(Z_axis) - no))
+    #
+     #jsonファイルの書き出し
     dict = {"Model":{}}#jsonのベースディクショナリ
+    #
+    # #構面情報の代入
+    # X_frame = [];Y_frame = [];Z_frame = []
+    # for axis_x_no in range(len(X_axis_name)):
+    #     x_axis_info = {}
+    #     x_axis_info["Name"] = X_axis_name[len(X_axis_name)-axis_x_no-1]
+    #     x_axis_info["RelativePosition"] = round(X_axis_diff[len(X_axis_name)-axis_x_no-1],3)
+    #     X_frame.append(x_axis_info)
+    # for axis_y_no in range(len(Y_axis_name)):
+    #     y_axis_info = {}
+    #     y_axis_info["Name"] = Y_axis_name[len(Y_axis_name)-axis_y_no-1]
+    #     y_axis_info["RelativePosition"] = round(Y_axis_diff[len(Y_axis_name)-axis_y_no-1],3)
+    #     Y_frame.append(y_axis_info)
+    # for axis_z_no in range(len(Z_axis_name)):
+    #     z_axis_info = {}
+    #     z_axis_info["Name"] = Z_axis_name[len(Z_axis_name)-axis_z_no-1]
+    #     z_axis_info["RelativeHeight"] = round(Z_axis_diff[len(Z_axis_name)-axis_z_no-1],3)
+    #     Z_frame.append(z_axis_info)
+    # dict["Model"]["Yframes"] = X_frame
+    # dict["Model"]["Xframes"] = Y_frame
+    # dict["Model"]["Stories"] = Z_frame
 
     #構面情報の代入
-    X_frame = [];Y_frame = [];Z_frame = []
-    for axis_x_no in range(len(X_axis_name)):
-        x_axis_info = {}
-        x_axis_info["Name"] = X_axis_name[len(X_axis_name)-axis_x_no-1]
-        x_axis_info["RelativePosition"] = round(X_axis_diff[len(X_axis_name)-axis_x_no-1],3)
-        X_frame.append(x_axis_info)
-    for axis_y_no in range(len(Y_axis_name)):
-        y_axis_info = {}
-        y_axis_info["Name"] = Y_axis_name[len(Y_axis_name)-axis_y_no-1]
-        y_axis_info["RelativePosition"] = round(Y_axis_diff[len(Y_axis_name)-axis_y_no-1],3)
-        Y_frame.append(y_axis_info)
-    for axis_z_no in range(len(Z_axis_name)):
-        z_axis_info = {}
-        z_axis_info["Name"] = Z_axis_name[len(Z_axis_name)-axis_z_no-1]
-        z_axis_info["RelativeHeight"] = round(Z_axis_diff[len(Z_axis_name)-axis_z_no-1],3)
-        Z_frame.append(z_axis_info)
+    X_frame=[];Y_frame=[];Z_frame=[]
+    for frame in frames:
+        if frame.category == "X":#Y方向構面の場合
+            y_axis_info = {}
+            y_axis_info["Name"] = frame.frame_name
+            y_axis_info["RelativePosition"] = frame.re_pos_x
+            Y_frame.append(y_axis_info)
+        elif frame.category == "Y": #X方向構面の場合
+            x_axis_info = {}
+            x_axis_info["Name"] = frame.frame_name
+            x_axis_info["RelativePosition"] = frame.re_pos_y
+            X_frame.append(x_axis_info)
+        elif frame.category == "Z": #Z方向構面の場合
+            z_axis_info = {}
+            z_axis_info["Name"] = frame.frame_name
+            z_axis_info["RelativePosition"] = frame.re_pos_z
+            Z_frame.append(z_axis_info)
     dict["Model"]["Yframes"] = X_frame
     dict["Model"]["Xframes"] = Y_frame
     dict["Model"]["Stories"] = Z_frame
-
-    X_frame_dict = {};Y_frame_dict = {};Z_frame_dict = {}
-    for temp in range(len(X_axis)):
-        X_frame_dict[X_axis[temp]] = X_axis_name[temp]
-    for temp in range(len(Y_axis)):
-        Y_frame_dict[Y_axis[temp]] = Y_axis_name[temp]
-    for temp in range(len(Z_axis)):
-        Z_frame_dict[Z_axis[temp]] = Z_axis_name[temp]
+    #
+    # X_frame_dict = {};Y_frame_dict = {};Z_frame_dict = {}
+    # for temp in range(len(X_axis)):
+    #     X_frame_dict[X_axis[temp]] = X_axis_name[temp]
+    # for temp in range(len(Y_axis)):
+    #     Y_frame_dict[Y_axis[temp]] = Y_axis_name[temp]
+    # for temp in range(len(Z_axis)):
+    #     Z_frame_dict[Z_axis[temp]] = Z_axis_name[temp]
 
     #節点情報のリスト化・代入
+    # node_info = []
+    # for node in nodes:
+    #     temp = {}
+    #     temp["Id"] = int(node.no)
+    #     temp["Floor"] = str(Z_frame_dict[node.z])
+    #     temp["AxisX"] = str(X_frame_dict[node.x])
+    #     temp["AxisY"] = str(Y_frame_dict[node.y])
+    #     temp["X"] = node.x
+    #     temp["Y"] = node.y
+    #     temp["Z"] = node.z
+    #     node_info.append(temp)
     node_info = []
     for node in nodes:
         temp = {}
         temp["Id"] = int(node.no)
-        temp["Floor"] = str(Z_frame_dict[node.z])
-        temp["AxisX"] = str(X_frame_dict[node.x])
-        temp["AxisY"] = str(Y_frame_dict[node.y])
+        temp["Floor"] = node.floor
+        temp["AxisX"] = node.axisX
+        temp["AxisY"] = node.axisY
         temp["X"] = node.x
         temp["Y"] = node.y
         temp["Z"] = node.z

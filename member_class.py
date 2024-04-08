@@ -14,7 +14,7 @@ def read_model():
     #df1 = pd.read_excel("input_model.xlsx", sheet_name="Node", header=0)
     node_data = []
     for i in range(len(df1)):
-        node_data.append((df1['no'][i],df1['x'][i],df1['y'][i],df1['z'][i],df1['boundary'][i]))
+        node_data.append((df1['no'][i],df1['x'][i],df1['y'][i],df1['z'][i],df1['boundary'][i],df1['Floor'][i],df1['AxisX'][i],df1['AxisY'][i]))
 
     nodes = [Node(*data) for data in node_data] #節点インスタンスの作成
 
@@ -68,18 +68,28 @@ def read_model():
         maximum_height += df4['story_height'][i]
     layers = [Layer(*data) for data in layer_data]#層インスタンスの作成
 
-    return nodes, beams, columns,layers,maximum_height
+    #構面定義の情報を収集
+    df5 = pd.read_csv("./make_sample_model/input_frames.csv",header=0)
+    frame_data = []
+    for i in range(len(df5)):
+        frame_data.append((df5['frame_no'][i],df5['category'][i],df5['frame_name'][i],df5['Relative_position_x'][i],df5['Relative_position_y'][i],df5['Relative_position_z'][i]))
+    frames = [Frame(*data) for data in frame_data]#構面インスタンスの作成
+
+    return nodes, beams, columns,layers,frames,maximum_height
 
 # 節点のクラス
 class Node():
     boundary_cond: object
 
-    def __init__(self, node_no, node_x, node_y, node_z, boundary):
+    def __init__(self, node_no, node_x, node_y, node_z, boundary,floor,axisX,axisY):
         self.no = node_no
         self.x = node_x
         self.y = node_y
         self.z = node_z
         self.boundary_cond = boundary
+        self.floor = floor#構面情報をインプットデータで定義
+        self.axisX = axisX
+        self.axisY = axisY
 
         self.beam_no_each_node_x = []
         self.column_no_each_node_x = []
@@ -384,3 +394,12 @@ class Beam_Group():#梁グループ
         self.neighbor_beam = []
         self.neighbor_group = []
         self.neighbor_group_no = []
+
+class Frame():#構面のクラス
+    def __init__(self,frame_no,category,frame_name,re_pos_x,re_pos_y,re_pos_z):
+        self.no = frame_no
+        self.category = category
+        self.frame_name = frame_name
+        self.re_pos_x = re_pos_x
+        self.re_pos_y = re_pos_y
+        self.re_pos_z = re_pos_z
