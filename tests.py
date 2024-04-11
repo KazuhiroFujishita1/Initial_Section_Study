@@ -48,12 +48,12 @@ class CalculationTests(unittest.TestCase):
         M0 = beam_load_i * 0.8
         Q0 = 5.0
         self.beams = [
-            Beam(1, 3, 4, beam_length, dist_load, beam_load_i, beam_load_j, category, 'Y', phi, phi2, M0, Q0, 1, 'fix', 'fix'),
+            Beam(1, 3, 4, beam_length, dist_load, beam_load_i, beam_load_j, category, 'Y', phi, phi2, M0, Q0, 2, 'fix', 'fix'),
             Beam(2, 7, 8, beam_length, dist_load, beam_load_i, beam_load_j, category, 'Y', phi, phi2, M0, Q0, 2, 'fix', 'fix'),
-            Beam(3, 3, 7, beam_length, dist_load, beam_load_i, beam_load_j, category, 'X', phi, phi2, M0, Q0, 1, 'fix', 'fix'),
+            Beam(3, 3, 7, beam_length, dist_load, beam_load_i, beam_load_j, category, 'X', phi, phi2, M0, Q0, 2, 'fix', 'fix'),
             Beam(4, 4, 8, beam_length, dist_load, beam_load_i, beam_load_j, category, 'X', phi, phi2, M0, Q0, 2, 'fix', 'fix')
         ]
-        load_area = 20.0
+        load_area = 9
         column_length = 3.0
         wall_load_length = 6.0
         self.columns = [
@@ -62,17 +62,8 @@ class CalculationTests(unittest.TestCase):
             Column(3, 5, 7, 1, column_length,load_area, wall_load_length),
             Column(4, 6, 8, 1, column_length,load_area, wall_load_length)
         ]
-                
-        self.column_groups = [
-            Column_Group(1, 'C1', [1,2]),
-            Column_Group(2, 'C2', [3,4]),
-        ]
-        self.beam_groups = [
-            Beam_Group(1, 'G1', [1,2],),
-            Beam_Group(2, 'G2', [3,4]),
-        ]
 
-        floor_area = 36.0
+        floor_area = 36
         outer_wall_length = 24.0
         self.layers = [
             Layer(1, 3.0, 7.65, 1.0, 7.3, 1.0, floor_area, outer_wall_length)
@@ -90,7 +81,7 @@ class CalculationTests(unittest.TestCase):
             return
 
         beam_select_mode = "cost"
-        set_initial_section(self.nodes, self.beams, self.columns, maximum_height, beam_select_mode)
+        self.beam_groups,self.column_groups = set_initial_section(self.nodes, self.beams, self.columns, maximum_height, beam_select_mode)
 
         if step < self.TO_FIXED_MOMENT_METHOD: 
             return
@@ -103,7 +94,6 @@ class CalculationTests(unittest.TestCase):
 
         D_method(self.nodes, self.layers, self.beams, self.columns, EE)
 
-
         if step < self.TO_D_UPDATE_SECTION: 
             return
 
@@ -114,10 +104,10 @@ class CalculationTests(unittest.TestCase):
         frag=0
         
         #大梁断面の更新
-        update_beam_section(self.nodes, self.beams, self.beam_select_mode,column_groups,beam_groups,flag)
+        update_beam_section(self.nodes, self.beams, self.beam_select_mode,self.column_groups,self.beam_groups,frag)
         
         #柱断面の更新
-        update_column_section(self.nodes, self.beams, self.columns, self.layers, EE,column_groups,beam_groups,beam_select_mode,flag)
+        update_column_section(self.nodes, self.beams, self.columns, self.layers, EE,self.column_groups,self.beam_groups,beam_select_mode,frag)
 
         return
     
@@ -158,7 +148,7 @@ class CalculationTests(unittest.TestCase):
         self.assertEqual(2, len(self.nodes[2].member_no_each_node_y))
 
         outer_wall_length = 24.0
-        floor_area = 36.0
+        floor_area = 36
         # 層重量の算定が妥当か
         self.assertEqual(7.65*floor_area+1*3/2*outer_wall_length, self.layers[0].weight)
         self.assertEqual(7.3*floor_area+1*3/2*outer_wall_length, self.layers[0].weight_seismic)
@@ -166,23 +156,38 @@ class CalculationTests(unittest.TestCase):
         # 柱軸力の算定が妥当か
         self.assertEqual(self.layers[0].weight/4, self.columns[0].N_Lx)
         self.assertEqual(self.layers[0].weight/4, self.columns[0].N_Ly)
-    #
-    # def test_initial_section(self):
-    #     self.prepare(self.TO_INITIAL_SECTION)
-    #     self.assertTrue(False)
-    #
-    # def test_fixed_moment(self):
-    #     self.prepare(self.TO_FIXED_MOMENT_METHOD)
-    #
-    #     # モーメント
-    #     column1 = self.columns[0]
-    #     beam1   = self.beams[0]
-    #
-    #     # 節点周りのモーメントが釣り合うか？
-    #     self.assertAlmostEqual(0.0, column1.M_Ly[1] + beam1.M_Ly[0], places=2)
-    #
-    #     # 撓みの計算が適切か？
-    #
+
+    def test_set_initial_section(self):
+        self.prepare(self.TO_INITIAL_SECTION)
+
+        #初期梁せいが正しく算定されているか
+        self.assertEqual(400,self.beams[0].H)
+        #初期柱せいが正しく算定されているか
+        self.assertEqual(300, self.columns[0].H)
+        #内梁、外梁判定が機能しているか
+        self.assertEqual('OB', self.beams[0].beam_place)
+
+        #柱梁のグルーピング数が適切か
+        beam_group_no = 0; column_group_no = 0
+        for i in self.beam_groups:
+            beam_group_no += 1
+        for i in self.column_groups:
+            column_group_no += 1
+        self.assertEqual(2, beam_group_no)
+        self.assertEqual(1, column_group_no)
+
+    def test_fixed_moment(self):
+        self.prepare(self.TO_FIXED_MOMENT_METHOD)
+
+        # モーメント
+        column1 = self.columns[0]
+        beam1   = self.beams[0]
+        # 節点周りのモーメントが釣り合うか？
+        self.assertAlmostEqual(0.0, column1.M_Ly[1] + beam1.M_Ly[0], places=2)
+
+        # 撓みの計算が適切か？
+        self.assertAlmostEqual()
+
     #     # TODO
     #
     #
