@@ -83,7 +83,7 @@ class CalculationTests(unittest.TestCase):
         beam_select_mode = "cost"
         self.beam_groups,self.column_groups = set_initial_section(self.nodes, self.beams, self.columns, maximum_height, beam_select_mode)
 
-        if step < self.TO_FIXED_MOMENT_METHOD: 
+        if step < self.TO_FIXED_MOMENT_METHOD:
             return
 
         EE= 205000000 #鋼材のヤング係数
@@ -91,23 +91,19 @@ class CalculationTests(unittest.TestCase):
 
         if step < self.TO_D_METHOD: 
             return
-
         D_method(self.nodes, self.layers, self.beams, self.columns, EE)
 
         if step < self.TO_D_UPDATE_SECTION: 
             return
-
-
         #柱梁の長期・短期荷重まとめ
         load_calc(self.beams, self.columns)
         
-        frag=0
-        
+        fLag=0
         #大梁断面の更新
-        update_beam_section(self.nodes, self.beams, self.beam_select_mode,self.column_groups,self.beam_groups,frag)
-        
+        beam_groups = update_beam_section(self.nodes, self.beams, beam_select_mode,EE,self.column_groups,self.beam_groups,fLag)
         #柱断面の更新
-        update_column_section(self.nodes, self.beams, self.columns, self.layers, EE,self.column_groups,self.beam_groups,beam_select_mode,frag)
+        column_groups = update_column_section(self.nodes, self.beams, self.columns, self.layers, EE, self.column_groups,
+                                              self.beam_groups,beam_select_mode, fLag)
 
         return
     
@@ -167,7 +163,7 @@ class CalculationTests(unittest.TestCase):
         #内梁、外梁判定が機能しているか
         self.assertEqual('OB', self.beams[0].beam_place)
 
-        #柱梁のグルーピング数が適切か
+        #柱梁の初期グルーピング数が適切か
         beam_group_no = 0; column_group_no = 0
         for i in self.beam_groups:
             beam_group_no += 1
@@ -178,32 +174,82 @@ class CalculationTests(unittest.TestCase):
 
     def test_fixed_moment(self):
         self.prepare(self.TO_FIXED_MOMENT_METHOD)
-
         # モーメント
         column1 = self.columns[0]
         beam1   = self.beams[0]
+        beam2   = self.beams[2]
         # 節点周りのモーメントが釣り合うか？
         self.assertAlmostEqual(0.0, column1.M_Ly[1] + beam1.M_Ly[0], places=2)
 
         # 撓みの計算が適切か？
-        self.assertAlmostEqual()
+        EE= 205000000 #鋼材のヤング係数
+        self.assertAlmostEqual(beam1.delta_y,5 * beam1.M0 / (48.0 * EE * beam1.I * beam1.calc_phai) * beam1.length ** 2
+                                       -(abs(beam1.M_Ly[0])+abs(beam1.M_Ly[1]))/(16.0*EE*beam1.I* beam1.calc_phai)*beam1.length**2)#Y方向梁
+        self.assertAlmostEqual(beam2.delta_x,5 * beam2.M0 / (48.0 * EE * beam2.I * beam2.calc_phai) * beam2.length ** 2
+                                       -(abs(beam2.M_Lx[0])+abs(beam2.M_Lx[1]))/(16.0*EE*beam2.I* beam1.calc_phai)*beam2.length**2)#X方向梁
 
-    #     # TODO
-    #
-    #
-    #
-    #
-    # def test_D_method(self):
-    #     self.prepare(self.TO_D_METHOD)
-    #     self.assertTrue(False)
-    #
-    # #def test_update_beam_section(self):
-    # #    self.prepare(self.TO_D_UPDATE_SECTION)
-    # #    self.assertTrue(False)
-    #
-    # #def test_update_column_section(self):
-    # #    self.prepare(self.TO_D_UPDATE_SECTION)
-    # #    self.assertTrue(False)
+    def test_D_method(self):
+        self.prepare(self.TO_D_METHOD)
+        column1 = self.columns[0];column2 = self.columns[1]
+        column3 = self.columns[2];column4 = self.columns[3]
+        # 層の地震力と得られる柱の層せん断力の和が等しくなるか
+        self.assertAlmostEqual(self.layers[0].shear_force_x,column1.Q_Sx+column2.Q_Sx+column3.Q_Sx+column4.Q_Sx)
+        self.assertAlmostEqual(self.layers[0].shear_force_y,column1.Q_Sy+column2.Q_Sy+column3.Q_Sy+column4.Q_Sy)
+
+    def test_update_beam_section(self):
+        self.prepare(self.TO_D_UPDATE_SECTION)
+        #梁断面更新後のグルーピング数が前後で同じか？
+        beam_group_no = 0
+        for i in self.beam_groups:
+            beam_group_no += 1
+        self.assertEqual(2,beam_group_no)
+        #選定断面に基づく梁応力検定比が0.9以下となるか？
+        kN_to_N = 1000.0  # kN→Nへ
+        m_to_mm = 1000.0  # m→mmへ
+        EE = 205000000  # 鋼材のヤング係数
+        for beam in self.beams:
+            self.assertLess(beam.QL*kN_to_N/#せん断長期
+                        ((beam.H-beam.t2*2-beam.r*2)*beam.B)
+                        /(beam.F/math.sqrt(3)/1.5),0.9)
+            self.assertLess(beam.ML*kN_to_N*m_to_mm/#曲げ長期
+                        (beam.t1*(beam.H-beam.t2*2)**2/6)
+                        /(beam.F/1.5),0.9)
+            self.assertLess(beam.Qs*kN_to_N/#せん断短期
+                        ((beam.H-beam.t2*2-beam.r*2)*beam.B)
+                        /(beam.F/math.sqrt(3)),0.9)
+            self.assertLess(beam.Ms*kN_to_N*m_to_mm/#曲げ短期
+                        (beam.t1*(beam.H-beam.t2*2)**2/6)
+                        /(beam.F),0.9)
+
+        #選定断面に基づく梁たわみが1/300rad以下となるか？
+        self.assertLess(5 * self.beams[0].M0 / (48.0 * EE * self.beams[0].I * self.beams[0].calc_phai) * self.beams[0].length ** 2
+                                - (abs(self.beams[0].M_Ly[0])+abs(self.beams[0].M_Ly[1])) /
+                            (16.0 * EE * self.beams[0].I * self.beams[0].calc_phai) * self.beams[0].length ** 2,
+                        1/300*self.beams[0].length)
+
+    def test_update_column_section(self):
+        self.prepare(self.TO_D_UPDATE_SECTION)
+
+        #選定断面に基づく柱諸元が層間変形角1/200radを満たすために必要な層の必要剛性を満たしているか？
+        for column in self.columns:
+            self.assertGreater(column.Ix,self.layers[0].I_limit1_x)
+            self.assertGreater(column.Iy,self.layers[0].I_limit1_y)
+
+        kN_to_N = 1000.0  # kN→Nへ
+        m_to_mm = 1000.0  # m→mmへ
+        #柱梁耐力比1以上を満たしているか
+        tarbeam_Mp=0
+        # for tar_beam in self.nodes[self.columns[0].j-1].beam_no_each_node_x:
+        #     print(self.beams[tar_beam-1].Mp)
+        #     tarbeam_Mp += self.beams[tar_beam-1].Mp#最上階、最下階の節点については、柱梁耐力比を考慮していない
+
+        axial_ratio_x = (self.columns[0].axial_column_x_Mp * kN_to_N /
+                         (self.columns[0].A * m_to_mm ** 2 * self.columns[0].F))
+        if axial_ratio_x <= 0.5:#軸力比を考慮した全塑性曲げモーメントの低下率の算定
+            reduction_ratio_x = 1-4*axial_ratio_x**2/3.0
+        else:
+            reduction_ratio_x = 4*(1-axial_ratio_x)/3.0
+        self.assertGreater(self.columns[0].Mpx*reduction_ratio_x,tarbeam_Mp)#柱梁耐力比が1以上ならOK
 
 if __name__ == '__main__':
     unittest.main()

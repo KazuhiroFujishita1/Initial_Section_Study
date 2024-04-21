@@ -811,6 +811,8 @@ def calc_limit_column_size(nodes,layers,columns,beams,EE):
             column.H = float(target_row['H'])
             column.Zp = float(target_row['Zp'])
             column.F = float(target_row['F'])
+            column.Mpx = column.F * 1.0/1000.0*1000*1000* column.Zp#更新後の全塑性モーメントも代入
+            column.Mpy = column.F * 1.0/1000.0*1000*1000* column.Zp
         #選定リストの上限値を超えている場合
         else:
             print("requirement value is over upper limit of column_list.")
@@ -828,6 +830,8 @@ def calc_limit_column_size(nodes,layers,columns,beams,EE):
             column.H = "Error"
             column.Zp = "Error"
             column.F = "Error"
+            column.Mpx = "Error"#更新後の全塑性モーメントも代入
+            column.Mpy = "Error"
 
         #柱の剛度の算定(単位cm3）
         column.KX = column.Ix/column.length*1000000.0
@@ -873,6 +877,8 @@ def calc_column_thickness(columns,flag):
                 column.H = float(target_row['H'])
                 column.Zp = float(target_row['Zp'])
                 column.F = float(target_row['F'])
+                column.Mpx = column.F * 1.0/1000.0*1000*1000* column.Zp  # 更新後の全塑性モーメントも代入
+                column.Mpy = column.F * 1.0/1000.0*1000*1000* column.Zp
 
             else:#柱リストの中に必要板厚以上のものがない場合
                 #柱せいを今よりも1段上げたうえで同等の断面2次モーメント、断面積の諸元を満たす断面を再選定
@@ -896,7 +902,8 @@ def calc_column_thickness(columns,flag):
                 column.H = float(target_row['H'])
                 column.Zp = float(target_row['Zp'])
                 column.F = float(target_row['F'])
-
+                column.Mpx = column.F * 1.0/1000.0*1000*1000* column.Zp  # 更新後の全塑性モーメントも代入
+                column.Mpy = column.F * 1.0/1000.0*1000*1000* column.Zp
 
         #柱の剛度の算定(単位cm3）
             column.KX = column.Ix/column.length*1000000.0
@@ -923,6 +930,5 @@ def update_column_section(nodes,beams,columns,layers,EE,column_groups,beam_group
     table_columns = ["No", "H", "t", "story"]
     group_data = make_group(temp_list, table_columns, str("story"), str("H"), str("t"))  # グルーピング
     column_groups = [member_class.Column_Group(*data) for data in group_data]  # グループのインスタンス定義
-
 
     return column_groups

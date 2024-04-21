@@ -166,13 +166,13 @@ def calc_beam_deflection(beam_no,beams,EE,dir):
                 beam_M.append(beams[i-1].M0\
                           -np.average([abs(beams[i-1].M_Lx[0]),abs(beams[i-1].M_Lx[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
                 delta.append(5 * beams[i-1].M0 / (48.0 * EE * beams[i - 1].I * beams[i-1].calc_phai) * beams[i - 1].length ** 2
-                                       -(abs(beams[i-1].M_Lx[0])+abs(beams[i-1].M_Lx[1]))/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
+                                       -(abs(beams[i-1].M_Lx[0])+abs(beams[i-1].M_Lx[1]))/(16.0*EE*beams[i-1].I * beams[i-1].calc_phai)*beams[i-1].length**2)#梁中央のたわみ（未検証
 
             elif dir == "Y":
                 beam_M.append(beams[i-1].M0\
                           -np.average([abs(beams[i-1].M_Ly[0]),abs(beams[i-1].M_Ly[1])]))#固定端モーメントを考慮した梁中央の曲げモーメントM0
                 delta.append(5 * beams[i-1].M0 / (48.0 * EE * beams[i - 1].I* beams[i-1].calc_phai) * beams[i - 1].length ** 2
-                                       -(abs(beams[i-1].M_Ly[0])+abs(beams[i-1].M_Ly[1]))/(16.0*EE*beams[i-1].I)*beams[i-1].length**2)#梁中央のたわみ（未検証
+                                       -(abs(beams[i-1].M_Ly[0])+abs(beams[i-1].M_Ly[1]))/(16.0*EE*beams[i-1].I * beams[i-1].calc_phai)*beams[i-1].length**2)#梁中央のたわみ（未検証
             else:#XY方向以外の場合例外エラー
                 "Error:calc of beam deflection."
 
